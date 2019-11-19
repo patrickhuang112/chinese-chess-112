@@ -20,7 +20,6 @@ from tkinter import *
 
 # Checklist
     # Flip board
-    # Deselect Piece
     # In Check (into game loop)
     # Checkmate / EndGame (into game loop)
 
@@ -58,6 +57,7 @@ class Piece(object):
         self.y = y
         self.color = color
         self.r = 20
+        self.moveCount = 0
     def draw(self, canvas):
         canvas.create_oval(self.x + self.r, self.y + self.r, self.x - self.r,
                            self.y - self.r, width = 1, fill = self.color)
@@ -218,7 +218,7 @@ class Knight(Piece):
         result = []
         for drow in [-2, -1, +1, +2]:
             for dcol in [-2, -1, +1, +2]:
-                if(abs(drow) - abs(dcol) == 1):
+                if(abs(abs(drow) - abs(dcol)) == 1):
                     result.extend(self.getLegalMovesFromPoint(board,row,col,drow,dcol))
         return result
 
@@ -280,8 +280,10 @@ class Pawn(Piece):
         super().__init__(x, y, color)
         self.hasCrossedRiver = False
     
-    def move(self):
-        pass
+    def checkCrossedRiver(self):
+        self.hasCrossedRiver = True if(self.moveCount >= 2) else False
+        
+        
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '兵', fill = 'white')
@@ -289,9 +291,12 @@ class Pawn(Piece):
         return 'Pawn'
     
     def getLegalMoves(self, board, row, col):
+        self.checkCrossedRiver()
+        
         result = []
         horizontalMoves = [-1, 0, +1] if (self.hasCrossedRiver) else [0]
         verticalMoves = [-1, 0] if (self.color == 'Red') else [+1, 0]
+
         for drow in verticalMoves:
             for dcol in horizontalMoves:
                 if(((drow != 0) and (dcol == 0 )) or 
@@ -328,31 +333,38 @@ def runGame():
                 # Simply moving it
         
         def mousePressed(mode, event):
-            print(Model.selectedPiece)
+            
             if(Controller.isNearPiece(event.x, event.y)):
                 (row,col) = Controller.getIntersection(Model.gameBoard, event.x, event.y)
                 (oldRow, oldCol) = Model.selectedPosition
-                if( (Model.selectedPiece == None) and 
-                    (Model.gameBoard.boardPieces[row][col] != None)):
+        
+                if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
                     Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
                     legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
-                    print(legalMoves)
+        
+                elif(Model.selectedPiece != None):
+                    if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
+                        Model.selectedPiece = None
+                        Model.selectedPosition = (-1,-1)
+            
+                    elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
+                        ((row, col) in Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol))):
+                        
+                        Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
+                        Model.selectedPiece.moveCount += 1
+                        Model.selectedPiece = None
+                        Model.selectedPosition = (-1,-1)
 
-                elif((Model.selectedPiece != None) and 
-                     (Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
-                     ((row, col) in Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol))):
-                    print('here')
-                    Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
-                    
-                    
-                   
-                    
+        def keyPressed(mode, event):
+            if(event.key == 'k'):
+                Model.gameBoard.printBoard()
+            elif(event.key == 'f'):
+                Controller.flipBoard(Model.gameBoard)
+
         def redrawAll(mode, canvas):
             View.drawBoard(canvas, Model.gameBoard)
             View.drawPieces(canvas)
     
-                        
-
     
     class View(object):
         
@@ -546,8 +558,7 @@ def runGame():
         @staticmethod
         def placePiece(board, oldRow, oldCol, row, col):
             (newX, newY) = Controller.getIntersectionCoords(Model.gameBoard, row, col)
-            
-            
+             
             if(Model.gameBoard.boardPieces[row][col] != None):
                 Controller.replacePiece(board, row, col)
 
@@ -555,9 +566,33 @@ def runGame():
             Model.gameBoard.boardPieces[oldRow][oldCol] = None
             Model.gameBoard.boardPieces[row][col] = Model.selectedPiece        
             
-            Model.selectedPiece = None
-            Model.selectedPosition = (-1,-1)
 
+        @staticmethod 
+        def flipBoard(board):
+            newBoard = board
+            rows = len(board.boardPieces)
+            cols = len(board.boardPieces[0])
+            pivotCol = cols // 2
+            pivotRow = (rows - 1) / 2
+
+            print(pivotCol, pivotRow)
+
+            for row in range(len(board.boardPieces)):
+                for col in range(len(board.boardPieces[0])):
+                    flipRowIndex = int(pivotRow - (row - pivotRow))
+                    flipColIndex = int(pivotCol - (col - pivotCol))
+                    newBoard.boardPieces[row][col] = board.boardPieces[flipRowIndex][flipColIndex]
+                    (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
+                    if(newBoard.boardPieces[row][col] != None):
+                        newBoard.boardPieces[row][col].x = newX
+                        newBoard.boardPieces[row][col].y = newY
+                
+            board = newBoard
+
+        @staticmethod
+        def updatePieceCoords(piece, row, col):
+            (x,y) = Controller.getIntersectionCoords(row, col)
+            (piece.x, piece.y) = (x,y)
 
         @staticmethod
         def isInCheck(board, kingPiece):
@@ -575,10 +610,6 @@ def runGame():
                         return True
                 return False
 
-            
-
-       
-            
         '''
         @staticmethod
         def getLocation(row, col, board):
@@ -606,8 +637,6 @@ def runGame():
                     mode.selectedObstacle = obj
                     mode.obstacleSelected = True
         '''
-
-    
     app = MyModalApp(width=500, height=600)
 
 def testGame():
