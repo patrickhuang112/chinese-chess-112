@@ -13,6 +13,8 @@ from tkinter import *
 
 # Game Notes: BLACK IS THE TOP HALF, RED IS THE BOTTOM HALF (FOR 2D)
 
+# Elan: suggested camera rotation for each term over.
+
 # Bugs/Fixes:
     # Change all of the getLegalMoves in pieces to eliminate rows/cols
         # Basically implement piece.row and piece.col
@@ -159,15 +161,28 @@ class Minister(Piece):
     
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):
         legalMoves = []
-        if( (0 <= row+2*drow < board.rows) and 
-            (0 <= col+2*dcol < board.cols) and 
-            ((board.boardPieces[row + 2*drow][col + 2*dcol] == None) or 
-             (board.boardPieces[row + 2*drow][col + 2*dcol].color != self.color))):        
-            legalMoves.append((row + 2*drow, col + 2*dcol))
-            row += 2*drow
-            col += 2*dcol
-        return legalMoves
-                
+        rowLimit = 5
+        if(self.color == 'Red'):
+            # If piece is red, must stay within rows 5 to 9
+            if( (rowLimit <= row+2*drow < board.rows) and 
+                (0 <= col+2*dcol < board.cols) and 
+                ((board.boardPieces[row + 2*drow][col + 2*dcol] == None) or 
+                (board.boardPieces[row + 2*drow][col + 2*dcol].color != self.color))):        
+                legalMoves.append((row + 2*drow, col + 2*dcol))
+                row += 2*drow
+                col += 2*dcol
+            return legalMoves
+        else:
+            # If piece is black, must stay within rows 0 to 4
+            if( (0 <= row+2*drow < rowLimit) and 
+                (0 <= col+2*dcol < board.cols) and 
+                ((board.boardPieces[row + 2*drow][col + 2*dcol] == None) or 
+                (board.boardPieces[row + 2*drow][col + 2*dcol].color != self.color))):        
+                legalMoves.append((row + 2*drow, col + 2*dcol))
+                row += 2*drow
+                col += 2*dcol
+            return legalMoves
+                    
 class Rook(Piece):
     def move(self):
         pass
@@ -286,7 +301,6 @@ class Pawn(Piece):
     def checkCrossedRiver(self):
         self.hasCrossedRiver = True if(self.moveCount >= 2) else False
         
-        
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '兵', fill = 'white')
@@ -309,8 +323,11 @@ class Pawn(Piece):
     
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):        
         legalMoves = []
-        if(  (board.boardPieces[row+drow][col+dcol] == None) or 
-             (board.boardPieces[row+drow][col+dcol].color != self.color)):        
+        if( (0 <= row+drow < board.rows) and 
+            (0 <= col+dcol < board.cols) and  
+    
+            ((board.boardPieces[row+drow][col+dcol] == None) or 
+             (board.boardPieces[row+drow][col+dcol].color != self.color))):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
@@ -342,12 +359,15 @@ def runGame():
                 (oldRow, oldCol) = Model.selectedPosition
         
                 if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
+                    print('Selected piece: ', Model.selectedPiece)
                     Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
-        
+                    legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
+                    print(legalMoves)
                 elif(Model.selectedPiece != None):
                     if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
+                        print('Deselected Piece!')
             
                     elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
                         ((row, col) in Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol))):
@@ -356,6 +376,7 @@ def runGame():
                         Model.selectedPiece.moveCount += 1
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
+                        print('Moved piece!')
 
         def keyPressed(mode, event):
             if(event.key == 'k'):
@@ -590,6 +611,42 @@ def runGame():
                         newBoard.boardPieces[row][col].y = newY
                 
             board = newBoard
+        @staticmethod
+        def findKings(board):
+            foundRedKing = False
+            foundBlackKing = False
+            for row in range(len(board.boardPieces)):
+                for col in range(len(board.boardPieces[0])):
+                    if(isinstance(board.boardPieces[row][col], King)):
+                        piece = board.boardPieces[row][col]
+                        if(piece.color == 'Red'):
+                            (redKingRow, redKingCol) = (row, col)
+                            foundRedKing = True
+                        else:
+                            (blackKingRow, blackKingCol) = (row, col)
+                            foundBlackKing = True
+            if(foundRedKing and foundBlackKing):
+                return (redKingRow, redKingCol, blackKingRow, blackKingCol)
+            return None
+
+        @staticmethod
+        def kingsFacing(board):
+            if(len(Controller.findKings(board)) == 4):
+                (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
+                if(rkCol != bkCol):
+                    return False
+                else:
+                    checkIndex = bkRow + 1
+                    while(checkIndex < rkRow):
+                        if(board.boardPieces[checkIndex][bkCol] != None):
+                            return True
+                        checkIndex += 1
+                    return False
+            else:
+                pass
+                # Game Over state
+        
+
 
         @staticmethod
         def updatePieceCoords(piece, row, col):
