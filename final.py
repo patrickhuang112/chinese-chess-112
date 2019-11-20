@@ -337,13 +337,12 @@ def runGame():
         
         def mousePressed(mode, event):
             
-            if(Controller.isNearPiece(event.x, event.y)):
+            if(Controller.isNearBoard(event.x, event.y)):
                 (row,col) = Controller.getIntersection(Model.gameBoard, event.x, event.y)
                 (oldRow, oldCol) = Model.selectedPosition
         
                 if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
                     Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
-                    legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
         
                 elif(Model.selectedPiece != None):
                     if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
@@ -529,7 +528,7 @@ def runGame():
             return (x, y)
         
         @staticmethod
-        def isNearPiece(x, y):
+        def isNearBoard(x, y):
             return ((Model.margin - Piece.r <= x <= Model.width - Model.margin + Piece.r) and
                     (Model.margin - Piece.r <= y <= Model.height - Model.margin + Piece.r))
 
