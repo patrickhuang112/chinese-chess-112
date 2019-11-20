@@ -68,11 +68,18 @@ class Piece(object):
         elif (self.color == 'Black'):
             return ((3 <= col <= 5) and (0 <= row <= 2))
     
-    def __hash__(self, other):
-        return ((isinstance(other, self)) and 
+    def __eq__(self, other):
+        return ((isinstance(other, type(self))) and 
                (self.x == other.x) and
                (self.y == other.y) and 
                (self.color == other.color))
+               
+    def getHashables(self):
+        return (self.x, self.y, self.color)
+    
+    def __hash__(self):
+        return hash(self.getHashables())
+    
 
     def getLegalMoves(self, board, row, col):
         raise NotImplementedError
@@ -108,7 +115,6 @@ class King(Piece):
                 col += dcol
         return legalMoves
 
-
 class Guard(Piece):
     def move(self):
         pass
@@ -133,7 +139,6 @@ class Guard(Piece):
                 row += drow
                 col += dcol
         return legalMoves
-
 
 class Minister(Piece):
     def move(self):
@@ -162,8 +167,7 @@ class Minister(Piece):
             row += 2*drow
             col += 2*dcol
         return legalMoves
-        
-        
+                
 class Rook(Piece):
     def move(self):
         pass
@@ -273,7 +277,6 @@ class Cannon(Piece):
                 col += dcol
             else: break
         return legalMoves
-
 
 class Pawn(Piece):
     def __init__(self, x, y, color):
@@ -569,7 +572,7 @@ def runGame():
 
         @staticmethod 
         def flipBoard(board):
-            newBoard = board
+            newBoard = copy.deepcopy(board)
             rows = len(board.boardPieces)
             cols = len(board.boardPieces[0])
             pivotCol = cols // 2
