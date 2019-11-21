@@ -82,7 +82,6 @@ class Piece(object):
     def __hash__(self):
         return hash(self.getHashables())
     
-
     def getLegalMoves(self, board, row, col):
         raise NotImplementedError
 
@@ -351,18 +350,22 @@ def runGame():
             # Moving a piece
                 # Replacing a piece
                 # Simply moving it
-        
+    
+
         def mousePressed(mode, event):
             
             if(Controller.isNearBoard(event.x, event.y)):
                 (row,col) = Controller.getIntersection(Model.gameBoard, event.x, event.y)
                 (oldRow, oldCol) = Model.selectedPosition
-        
+                
                 if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
-                    print('Selected piece: ', Model.selectedPiece)
-                    Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
-                    legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
-                    print(legalMoves)
+                    if(Model.currentPlayer == Model.gameBoard.boardPieces[row][col].color):
+                        Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
+                        legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
+
+
+                        print('Selected piece: ', Model.selectedPiece)
+                        print('Legal Moves: ', legalMoves)
                 elif(Model.selectedPiece != None):
                     if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
                         Model.selectedPiece = None
@@ -372,11 +375,13 @@ def runGame():
                     elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
                         ((row, col) in Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol))):
                         
-                        Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
-                        Model.selectedPiece.moveCount += 1
-                        Model.selectedPiece = None
-                        Model.selectedPosition = (-1,-1)
-                        print('Moved piece!')
+                        success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
+                        if(success):    
+                            Model.selectedPiece.moveCount += 1
+                            Model.selectedPiece = None
+                            Model.selectedPosition = (-1,-1)
+                            Controller.switchPlayer()
+                            print('Moved piece!')
 
         def keyPressed(mode, event):
             if(event.key == 'k'):
@@ -450,6 +455,7 @@ def runGame():
         height = 600
         selectedPiece = None
         selectedPosition = (-1,-1)
+        currentPlayer = 'Red'
 
     class Controller(object):
 
@@ -572,23 +578,47 @@ def runGame():
                 return board.boardPieces[row][col]
         
         @staticmethod
-        def replacePiece(board, row, col):
+        def removeReplacedPiece(board, row, col):
             color = Model.gameBoard.boardPieces[row][col].color
             index = Model.pieces[color].index(Model.gameBoard.boardPieces[row][col])
             removedPiece = Model.pieces[color].pop(index)
             print('Removed Piece: ', removedPiece)
+            return removedPiece
+
+        @staticmethod
+        def revertReplacedPiece(board, row, col, removedPiece):
+            if(removedPiece.color == 'Red'):
+                Model.pieces['Red'].append(removedPiece)
+            else:
+                Model.pieces['Black'].append(removedPiece)
 
         @staticmethod
         def placePiece(board, oldRow, oldCol, row, col):
             (newX, newY) = Controller.getIntersectionCoords(Model.gameBoard, row, col)
-             
+            (oldX, oldY) = (Model.selectedPiece.x, Model.selectedPiece.y)
+            removedPiece = None
+
             if(Model.gameBoard.boardPieces[row][col] != None):
-                Controller.replacePiece(board, row, col)
+                removedPiece = Controller.removeReplacedPiece(board, row, col)
 
             (Model.selectedPiece.x, Model.selectedPiece.y) = (newX, newY)
-            Model.gameBoard.boardPieces[oldRow][oldCol] = None
-            Model.gameBoard.boardPieces[row][col] = Model.selectedPiece        
             
+            Model.gameBoard.boardPieces[oldRow][oldCol] = None
+            Model.gameBoard.boardPieces[row][col] = Model.selectedPiece
+
+            if(Controller.kingsFacing(Model.gameBoard)):
+                Model.gameBoard.boardPieces[oldRow][oldCol] = Model.selectedPiece
+                (Model.selectedPiece.x, Model.selectedPiece.y) = (oldX, oldY)
+                if(removedPiece != None):
+                    Controller.revertReplacedPiece(Model.gameBoard, row, col, removedPiece)
+                return False
+            return True
+
+
+        @staticmethod
+        def switchPlayer():
+            Model.currentPlayer = 'Black' if(Model.currentPlayer == 'Red') else 'Red'            
+
 
         @staticmethod 
         def flipBoard(board):
@@ -638,10 +668,13 @@ def runGame():
                 else:
                     checkIndex = bkRow + 1
                     while(checkIndex < rkRow):
+                        print('checkIndex', checkIndex, bkCol)
+                        print('piece', board.boardPieces[checkIndex][bkCol])
                         if(board.boardPieces[checkIndex][bkCol] != None):
-                            return True
+                            return False
                         checkIndex += 1
-                    return False
+                    print('here')
+                    return True
             else:
                 pass
                 # Game Over state
