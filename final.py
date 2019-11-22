@@ -229,7 +229,6 @@ class Knight(Piece):
         elif(abs(dcol) == 2):
             dcol =  -1 if (dcol < 0) else +1
             drow = 0
-        print('drow', drow, dcol)
         return (board.boardPieces[row + drow][col + dcol] != None)
                        
     def getLegalMoves(self, board, row, col):
@@ -362,19 +361,20 @@ def runGame():
                     if(Model.currentPlayer == Model.gameBoard.boardPieces[row][col].color):
                         Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
                         legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
-
+                        refinedMoves = Controller.refineLegalMoves(Model.gameBoard, row, col, Model.selectedPiece, legalMoves)
 
                         print('Selected piece: ', Model.selectedPiece)
-                        print('Legal Moves: ', legalMoves)
+                        print('Legal Moves: ', refinedMoves)
                 elif(Model.selectedPiece != None):
+                    legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol)
+                    refinedMoves = Controller.refineLegalMoves(Model.gameBoard, oldRow, oldCol, Model.selectedPiece, legalMoves)
                     if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
                         print('Deselected Piece!')
             
                     elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
-                        ((row, col) in Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol))):
-                        
+                        ((row, col) in refinedMoves)):
                         success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
                         if(success):    
                             Model.selectedPiece.moveCount += 1
@@ -382,6 +382,7 @@ def runGame():
                             Model.selectedPosition = (-1,-1)
                             Controller.switchPlayer()
                             print('Moved piece!')
+            Controller.checkGameOver(Model.gameBoard)
 
         def keyPressed(mode, event):
             if(event.key == 'k'):
@@ -619,28 +620,6 @@ def runGame():
         def switchPlayer():
             Model.currentPlayer = 'Black' if(Model.currentPlayer == 'Red') else 'Red'            
 
-
-        @staticmethod 
-        def flipBoard(board):
-            newBoard = copy.deepcopy(board)
-            rows = len(board.boardPieces)
-            cols = len(board.boardPieces[0])
-            pivotCol = cols // 2
-            pivotRow = (rows - 1) / 2
-
-            print(pivotCol, pivotRow)
-
-            for row in range(len(board.boardPieces)):
-                for col in range(len(board.boardPieces[0])):
-                    flipRowIndex = int(pivotRow - (row - pivotRow))
-                    flipColIndex = int(pivotCol - (col - pivotCol))
-                    newBoard.boardPieces[row][col] = board.boardPieces[flipRowIndex][flipColIndex]
-                    (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
-                    if(newBoard.boardPieces[row][col] != None):
-                        newBoard.boardPieces[row][col].x = newX
-                        newBoard.boardPieces[row][col].y = newY
-                
-            board = newBoard
         @staticmethod
         def findKings(board):
             foundRedKing = False
@@ -668,18 +647,55 @@ def runGame():
                 else:
                     checkIndex = bkRow + 1
                     while(checkIndex < rkRow):
-                        print('checkIndex', checkIndex, bkCol)
-                        print('piece', board.boardPieces[checkIndex][bkCol])
+                        
                         if(board.boardPieces[checkIndex][bkCol] != None):
                             return False
                         checkIndex += 1
-                    print('here')
+
                     return True
             else:
                 pass
                 # Game Over state
         
+        @staticmethod
+        def checkGameOver(board):
+            final = []
+            color = 'Red' if(Model.currentPlayer == 'Red') else 'Black'
+            for piece in Model.pieces[color]:
+                (row, col) = Controller.getIntersection(board, piece.x, piece.y)
+                legalMoves = piece.getLegalMoves(board, row, col)
+                refinedMoves = Controller.refineLegalMoves(board, row, col, piece, legalMoves)
+                final.extend(refinedMoves)
+                
+            if(len(final) == 0):
+                print('GameOver CHECKMATE!')
+                pass
+                    
 
+        @staticmethod
+        def refineLegalMoves(board, row, col, piece, moves):
+            changedMoves = copy.deepcopy(moves)
+            for (newRow, newCol) in moves:
+                #Temp changes
+                removedPiece = None
+                board.boardPieces[row][col] = None
+                if(board.boardPieces[newRow][newCol] != None):
+                    removedPiece = board.boardPieces[newRow][newCol]
+                board.boardPieces[newRow][newCol] = piece
+
+                # Check if valid
+                if(Controller.kingsFacing(Model.gameBoard)):
+                    changedMoves.remove((newRow, newCol))
+            
+                # Revert temp changes
+                if(removedPiece != None):
+                    board.boardPieces[newRow][newCol] = removedPiece
+                else: 
+
+                    board.boardPieces[newRow][newCol] = None
+                board.boardPieces[row][col] = piece
+            return changedMoves
+                    
 
         @staticmethod
         def updatePieceCoords(piece, row, col):
@@ -703,6 +719,31 @@ def runGame():
                 return False
 
         '''
+
+        
+
+        @staticmethod 
+        def flipBoard(board):
+            newBoard = copy.deepcopy(board)
+            rows = len(board.boardPieces)
+            cols = len(board.boardPieces[0])
+            pivotCol = cols // 2
+            pivotRow = (rows - 1) / 2
+
+            print(pivotCol, pivotRow)
+
+            for row in range(len(board.boardPieces)):
+                for col in range(len(board.boardPieces[0])):
+                    flipRowIndex = int(pivotRow - (row - pivotRow))
+                    flipColIndex = int(pivotCol - (col - pivotCol))
+                    newBoard.boardPieces[row][col] = board.boardPieces[flipRowIndex][flipColIndex]
+                    (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
+                    if(newBoard.boardPieces[row][col] != None):
+                        newBoard.boardPieces[row][col].x = newX
+                        newBoard.boardPieces[row][col].y = newY
+                
+            board = newBoard
+
         @staticmethod
         def getLocation(row, col, board):
             if(not isInBoard(app, x, y)):
