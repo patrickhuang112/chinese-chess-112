@@ -51,7 +51,6 @@ class Board(object):
     def printBoard(self):
         self.__repr__()
 
-
 class Piece(object):
     r = 20
     def __init__(self, x, y, color):
@@ -339,7 +338,6 @@ def runGame():
             app.setActiveMode(app.gameMode)
             Controller.initGame()
         
-
     class GameMode(Mode):
         def appStarted(mode):
             pass
@@ -353,26 +351,32 @@ def runGame():
 
         def mousePressed(mode, event):
             
+            #Only if click in board
             if(Controller.isNearBoard(event.x, event.y)):
                 (row,col) = Controller.getIntersection(Model.gameBoard, event.x, event.y)
                 (oldRow, oldCol) = Model.selectedPosition
                 
+                # Select a piece if none selected
                 if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
                     if(Model.currentPlayer == Model.gameBoard.boardPieces[row][col].color):
                         Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
                         legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
                         refinedMoves = Controller.refineLegalMoves(Model.gameBoard, row, col, Model.selectedPiece, legalMoves)
-
                         print('Selected piece: ', Model.selectedPiece)
                         print('Legal Moves: ', refinedMoves)
+                
+                #Piece is selected already
                 elif(Model.selectedPiece != None):
                     legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol)
                     refinedMoves = Controller.refineLegalMoves(Model.gameBoard, oldRow, oldCol, Model.selectedPiece, legalMoves)
+                    
+                    # User click on selected piece, deselects it
                     if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
                         print('Deselected Piece!')
-            
+
+                    # User clicks on valid move area
                     elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
                         ((row, col) in refinedMoves)):
                         success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
@@ -382,13 +386,16 @@ def runGame():
                             Model.selectedPosition = (-1,-1)
                             Controller.switchPlayer()
                             print('Moved piece!')
+            
+            #Check if GameOver (checkmate)
             Controller.checkGameOver(Model.gameBoard)
 
         def keyPressed(mode, event):
             if(event.key == 'k'):
                 Model.gameBoard.printBoard()
-            elif(event.key == 'f'):
-                Controller.flipBoard(Model.gameBoard)
+            
+            # elif(event.key == 'f'):
+            #    Controller.flipBoard(Model.gameBoard)
 
         def redrawAll(mode, canvas):
             View.drawBoard(canvas, Model.gameBoard)
@@ -397,6 +404,7 @@ def runGame():
     
     class View(object):
         
+        #Draws vertical and horizontal board lines
         @staticmethod
         def drawBoardGrid(canvas, board):
             #Subtract one because we are using lines, not spaces as rows/cols
@@ -405,6 +413,8 @@ def runGame():
                     (x0,y0,x1,y1) = Controller.getCellDimensions(board, row, col)
                     canvas.create_rectangle(x0,y0,x1,y1,fill = 'white', 
                                             width = '1')
+        
+        # Draws middle 'river'
         @staticmethod
         def drawBoardMiddle(canvas, board):
             # 0 represents the leftmost column
@@ -412,13 +422,15 @@ def runGame():
             # Reassign x-coords so middle streches across entire board
             x0, x1 = Model.margin, Model.width - Model.margin
             canvas.create_rectangle(x0, y0, x1, y1, fill = 'white', width = '1')
+        
+        # Draws individual palace
         @staticmethod
         def drawIndivPalace(canvas, x0, y0, x1, y1):
             canvas.create_line(x0, y0, x1, y1)
             canvas.create_line(x0, y1, x1, y0)
         
         @staticmethod
-        # Replace magic numbers
+        # Draws red and black palaces
         def drawBoardPalace(canvas, board):
             leftPalaceColumn = 3
             topBottomPalaceRow = board.rows - 3
@@ -432,18 +444,21 @@ def runGame():
             y1 += board.cellHeight
             View.drawIndivPalace(canvas, x0, y0, x1, y1)
 
+        # Draws entire board
         @staticmethod
         def drawBoard(canvas, board):
             View.drawBoardGrid(canvas, board)
             View.drawBoardMiddle(canvas, board)
             View.drawBoardPalace(canvas, board)
 
+        # Draws all pieces on board
         @staticmethod
         def drawPieces(canvas):
             for key in Model.pieces:
                 for piece in Model.pieces[key]:
                     piece.draw(canvas)
 
+    # Contains all game data and important variables
     class Model(object):    
         gameBoard = Board()
         margin = 50
@@ -452,8 +467,7 @@ def runGame():
         pieces = dict()
         pieces['Red'] = []
         pieces['Black'] = []
-        width = 500
-        height = 600
+        width, height = 500, 600
         selectedPiece = None
         selectedPosition = (-1,-1)
         currentPlayer = 'Red'
