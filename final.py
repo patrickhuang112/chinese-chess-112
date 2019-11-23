@@ -7,6 +7,7 @@
 
 import math, copy, random
 
+# From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
 from cmu_112_graphics import *
 from tkinter import *
 
@@ -42,10 +43,10 @@ class Board(object):
         self.width, self.height = 400, 500
         self.cellWidth = self.width / (self.cols - 1)
         self.cellHeight = self.height / (self.rows - 1)
-        self.boardPieces = [[None] * self.cols for row in range(self.rows)]
+        self.pieces = [[None] * self.cols for row in range(self.rows)]
     def __repr__(self):
-        for row in range(len(self.boardPieces)):
-            print(self.boardPieces[row], end = ' ')
+        for row in range(len(self.pieces)):
+            print(self.pieces[row], end = ' ')
             print() 
     
     def printBoard(self):
@@ -108,8 +109,8 @@ class King(Piece):
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):        
         legalMoves = []
         if( (self.isInPalace(row + drow, col + dcol)) and
-            ((board.boardPieces[row+drow][col+dcol] == None) or 
-             (board.boardPieces[row+drow][col+dcol].color != self.color))):        
+            ((board.pieces[row+drow][col+dcol] == None) or 
+             (board.pieces[row+drow][col+dcol].color != self.color))):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
@@ -133,8 +134,8 @@ class Guard(Piece):
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):        
         legalMoves = []
         if( (self.isInPalace(row + drow, col + dcol)) and
-            ((board.boardPieces[row+drow][col+dcol] == None) or 
-             (board.boardPieces[row+drow][col+dcol].color != self.color))):        
+            ((board.pieces[row+drow][col+dcol] == None) or 
+             (board.pieces[row+drow][col+dcol].color != self.color))):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
@@ -164,8 +165,8 @@ class Minister(Piece):
             # If piece is red, must stay within rows 5 to 9
             if( (rowLimit <= row+2*drow < board.rows) and 
                 (0 <= col+2*dcol < board.cols) and 
-                ((board.boardPieces[row + 2*drow][col + 2*dcol] == None) or 
-                (board.boardPieces[row + 2*drow][col + 2*dcol].color != self.color))):        
+                ((board.pieces[row + 2*drow][col + 2*dcol] == None) or 
+                (board.pieces[row + 2*drow][col + 2*dcol].color != self.color))):        
                 legalMoves.append((row + 2*drow, col + 2*dcol))
                 row += 2*drow
                 col += 2*dcol
@@ -174,8 +175,8 @@ class Minister(Piece):
             # If piece is black, must stay within rows 0 to 4
             if( (0 <= row+2*drow < rowLimit) and 
                 (0 <= col+2*dcol < board.cols) and 
-                ((board.boardPieces[row + 2*drow][col + 2*dcol] == None) or 
-                (board.boardPieces[row + 2*drow][col + 2*dcol].color != self.color))):        
+                ((board.pieces[row + 2*drow][col + 2*dcol] == None) or 
+                (board.pieces[row + 2*drow][col + 2*dcol].color != self.color))):        
                 legalMoves.append((row + 2*drow, col + 2*dcol))
                 row += 2*drow
                 col += 2*dcol
@@ -204,8 +205,8 @@ class Rook(Piece):
         legalMoves = []
         while(  (0 <= row + drow < board.rows) and 
                 (0 <= col + dcol < board.cols)):
-            if( (board.boardPieces[row+drow][col+dcol] == None) or 
-                (board.boardPieces[row+drow][col+dcol].color != self.color)):        
+            if( (board.pieces[row+drow][col+dcol] == None) or 
+                (board.pieces[row+drow][col+dcol].color != self.color)):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
@@ -228,7 +229,7 @@ class Knight(Piece):
         elif(abs(dcol) == 2):
             dcol =  -1 if (dcol < 0) else +1
             drow = 0
-        return (board.boardPieces[row + drow][col + dcol] != None)
+        return (board.pieces[row + drow][col + dcol] != None)
                        
     def getLegalMoves(self, board, row, col):
         result = []
@@ -243,8 +244,8 @@ class Knight(Piece):
         if( (0 <= row+drow < board.rows) and 
             (0 <= col+dcol < board.cols) and 
             (not self.pieceIsInWay(board, row, col, drow, dcol)) and
-            ((board.boardPieces[row + drow][col + dcol] == None) or 
-             (board.boardPieces[row + drow][col + dcol].color != self.color))):        
+            ((board.pieces[row + drow][col + dcol] == None) or 
+             (board.pieces[row + drow][col + dcol].color != self.color))):        
             legalMoves.append((row + drow, col + dcol))
             row += drow
             col += dcol
@@ -273,17 +274,17 @@ class Cannon(Piece):
         legalMoves = []
         attacking = False
         while((0 <= row + drow < board.rows) and (0 <= col + dcol < board.cols)):
-            if((not attacking) and (board.boardPieces[row+drow][col+dcol] != None)):
+            if((not attacking) and (board.pieces[row+drow][col+dcol] != None)):
                 attacking = True
                 row += drow
                 col += dcol
             elif(attacking):
-                if( (board.boardPieces[row+drow][col+dcol] != None) and 
-                    (board.boardPieces[row+drow][col+dcol].color != self.color)):
+                if( (board.pieces[row+drow][col+dcol] != None) and 
+                    (board.pieces[row+drow][col+dcol].color != self.color)):
                     legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol   
-            elif(board.boardPieces[row+drow][col+dcol] == None):        
+            elif(board.pieces[row+drow][col+dcol] == None):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
@@ -323,14 +324,14 @@ class Pawn(Piece):
         if( (0 <= row+drow < board.rows) and 
             (0 <= col+dcol < board.cols) and  
     
-            ((board.boardPieces[row+drow][col+dcol] == None) or 
-             (board.boardPieces[row+drow][col+dcol].color != self.color))):        
+            ((board.pieces[row+drow][col+dcol] == None) or 
+             (board.pieces[row+drow][col+dcol].color != self.color))):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
         return legalMoves
 
-
+# ModalApp class from https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
 def runGame():
     class MyModalApp(ModalApp):
         def appStarted(app):
@@ -353,12 +354,14 @@ def runGame():
             
             #Only if click in board
             if(Controller.isNearBoard(event.x, event.y)):
-                (row,col) = Controller.getIntersection(Model.gameBoard, event.x, event.y)
+                (row,col) = Controller.getIntersection(Model.gameBoard, event.x, 
+                                                        event.y)
                 (oldRow, oldCol) = Model.selectedPosition
                 
                 # Select a piece if none selected
-                if((Model.selectedPiece == None) and (Model.gameBoard.boardPieces[row][col] != None)):
-                    if(Model.currentPlayer == Model.gameBoard.boardPieces[row][col].color):
+                if((Model.selectedPiece == None) and 
+                   (Model.gameBoard.pieces[row][col] != None)):
+                    if(Model.currentPlayer == Model.gameBoard.pieces[row][col].color):
                         Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
                         legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
                         refinedMoves = Controller.refineLegalMoves(Model.gameBoard, row, col, Model.selectedPiece, legalMoves)
@@ -371,13 +374,13 @@ def runGame():
                     refinedMoves = Controller.refineLegalMoves(Model.gameBoard, oldRow, oldCol, Model.selectedPiece, legalMoves)
                     
                     # User click on selected piece, deselects it
-                    if(Model.selectedPiece == Model.gameBoard.boardPieces[row][col]):
+                    if(Model.selectedPiece == Model.gameBoard.pieces[row][col]):
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
                         print('Deselected Piece!')
 
                     # User clicks on valid move area
-                    elif((Model.selectedPiece != Model.gameBoard.boardPieces[row][col]) and 
+                    elif((Model.selectedPiece != Model.gameBoard.pieces[row][col]) and 
                         ((row, col) in refinedMoves)):
                         success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
                         if(success):    
@@ -585,17 +588,17 @@ def runGame():
             for color in Model.pieces:
                 for piece in Model.pieces[color]:
                     (row,col) = Controller.getIntersection(board, piece.x, piece.y)
-                    board.boardPieces[row][col] = piece
+                    board.pieces[row][col] = piece
         @staticmethod
         def selectPiece(board, row, col):
-            if(board.boardPieces[row][col] != None):
+            if(board.pieces[row][col] != None):
                 Model.selectedPosition = (row, col)
-                return board.boardPieces[row][col]
+                return board.pieces[row][col]
         
         @staticmethod
         def removeReplacedPiece(board, row, col):
-            color = Model.gameBoard.boardPieces[row][col].color
-            index = Model.pieces[color].index(Model.gameBoard.boardPieces[row][col])
+            color = Model.gameBoard.pieces[row][col].color
+            index = Model.pieces[color].index(Model.gameBoard.pieces[row][col])
             removedPiece = Model.pieces[color].pop(index)
             print('Removed Piece: ', removedPiece)
             return removedPiece
@@ -613,16 +616,16 @@ def runGame():
             (oldX, oldY) = (Model.selectedPiece.x, Model.selectedPiece.y)
             removedPiece = None
 
-            if(Model.gameBoard.boardPieces[row][col] != None):
+            if(Model.gameBoard.pieces[row][col] != None):
                 removedPiece = Controller.removeReplacedPiece(board, row, col)
 
             (Model.selectedPiece.x, Model.selectedPiece.y) = (newX, newY)
             
-            Model.gameBoard.boardPieces[oldRow][oldCol] = None
-            Model.gameBoard.boardPieces[row][col] = Model.selectedPiece
+            Model.gameBoard.pieces[oldRow][oldCol] = None
+            Model.gameBoard.pieces[row][col] = Model.selectedPiece
 
             if(Controller.kingsFacing(Model.gameBoard)):
-                Model.gameBoard.boardPieces[oldRow][oldCol] = Model.selectedPiece
+                Model.gameBoard.pieces[oldRow][oldCol] = Model.selectedPiece
                 (Model.selectedPiece.x, Model.selectedPiece.y) = (oldX, oldY)
                 if(removedPiece != None):
                     Controller.revertReplacedPiece(Model.gameBoard, row, col, removedPiece)
@@ -638,10 +641,10 @@ def runGame():
         def findKings(board):
             foundRedKing = False
             foundBlackKing = False
-            for row in range(len(board.boardPieces)):
-                for col in range(len(board.boardPieces[0])):
-                    if(isinstance(board.boardPieces[row][col], King)):
-                        piece = board.boardPieces[row][col]
+            for row in range(len(board.pieces)):
+                for col in range(len(board.pieces[0])):
+                    if(isinstance(board.pieces[row][col], King)):
+                        piece = board.pieces[row][col]
                         if(piece.color == 'Red'):
                             (redKingRow, redKingCol) = (row, col)
                             foundRedKing = True
@@ -662,7 +665,7 @@ def runGame():
                     checkIndex = bkRow + 1
                     while(checkIndex < rkRow):
                         
-                        if(board.boardPieces[checkIndex][bkCol] != None):
+                        if(board.pieces[checkIndex][bkCol] != None):
                             return False
                         checkIndex += 1
 
@@ -692,10 +695,10 @@ def runGame():
             for (newRow, newCol) in moves:
                 #Temp changes
                 removedPiece = None
-                board.boardPieces[row][col] = None
-                if(board.boardPieces[newRow][newCol] != None):
-                    removedPiece = board.boardPieces[newRow][newCol]
-                board.boardPieces[newRow][newCol] = piece
+                board.pieces[row][col] = None
+                if(board.pieces[newRow][newCol] != None):
+                    removedPiece = board.pieces[newRow][newCol]
+                board.pieces[newRow][newCol] = piece
 
                 # Check if valid
                 if(Controller.kingsFacing(Model.gameBoard)):
@@ -703,11 +706,11 @@ def runGame():
             
                 # Revert temp changes
                 if(removedPiece != None):
-                    board.boardPieces[newRow][newCol] = removedPiece
+                    board.pieces[newRow][newCol] = removedPiece
                 else: 
 
-                    board.boardPieces[newRow][newCol] = None
-                board.boardPieces[row][col] = piece
+                    board.pieces[newRow][newCol] = None
+                board.pieces[row][col] = piece
             return changedMoves
                     
 
@@ -739,22 +742,22 @@ def runGame():
         @staticmethod 
         def flipBoard(board):
             newBoard = copy.deepcopy(board)
-            rows = len(board.boardPieces)
-            cols = len(board.boardPieces[0])
+            rows = len(board.pieces)
+            cols = len(board.pieces[0])
             pivotCol = cols // 2
             pivotRow = (rows - 1) / 2
 
             print(pivotCol, pivotRow)
 
-            for row in range(len(board.boardPieces)):
-                for col in range(len(board.boardPieces[0])):
+            for row in range(len(board.pieces)):
+                for col in range(len(board.pieces[0])):
                     flipRowIndex = int(pivotRow - (row - pivotRow))
                     flipColIndex = int(pivotCol - (col - pivotCol))
-                    newBoard.boardPieces[row][col] = board.boardPieces[flipRowIndex][flipColIndex]
+                    newBoard.pieces[row][col] = board.pieces[flipRowIndex][flipColIndex]
                     (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
-                    if(newBoard.boardPieces[row][col] != None):
-                        newBoard.boardPieces[row][col].x = newX
-                        newBoard.boardPieces[row][col].y = newY
+                    if(newBoard.pieces[row][col] != None):
+                        newBoard.pieces[row][col].x = newX
+                        newBoard.pieces[row][col].y = newY
                 
             board = newBoard
 
