@@ -16,10 +16,6 @@ from panda3d.core import LPoint3, LVector3, BitMask32
 from direct.actor.Actor import Actor
 
 
-# From https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
-from cmu_112_graphics import *
-from tkinter import *
-
 
 # Game Notes: BLACK IS THE TOP HALF, RED IS THE BOTTOM HALF (FOR 2D)
 
@@ -49,7 +45,8 @@ class Board(object):
     def __init__(self):
         self.x, self.y, self.z = 0,0,0
         self.cols, self.rows = 9, 10
-        self.width, self.height = 164, 146
+        self.width, self.height = 146, 164
+        self.radiusX, self.radiusY = self.width / 2, self.height / 2
         self.cellWidth = self.width / (self.cols - 1)
         self.cellHeight = self.height / (self.rows - 1)
         self.pieces = [[None] * self.cols for row in range(self.rows)]
@@ -67,7 +64,7 @@ class Piece(object):
         self.x = x
         self.y = y
         self.color = color
-        self.r = 20
+        self.r = 10
         self.moveCount = 0
         self.model = model
     def draw(self, canvas):
@@ -302,8 +299,8 @@ class Cannon(Piece):
         return legalMoves
 
 class Pawn(Piece):
-    def __init__(self, x, y, color):
-        super().__init__(x, y, color)
+    def __init__(self, x, y, color, model):
+        super().__init__(x, y, color, model)
         self.hasCrossedRiver = False
     
     def checkCrossedRiver(self):
@@ -341,14 +338,9 @@ class Pawn(Piece):
                 col += dcol
         return legalMoves
 
-
-
-
-
-# ModalApp class from https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
 def runGame():
+    
     # From Panda3D Chessboard demo
-
     def PointAtZ(z, point, vec):
         return point + vec * ((z - point.getZ()) / vec.getZ())
  
@@ -358,40 +350,45 @@ def runGame():
         def __init__(self):
             ShowBase.__init__(self)
             
+            self.disableMouse()
             Controller.initGame(self)
 
-            self.disableMouse()
-
+            #Lighting for scene
             self.dlight = DirectionalLight('my dlight')
             self.dlnp = render.attachNewNode(self.dlight)
             self.dlnp.setHpr(0, -90, 0)
-
             render.setLight(self.dlnp)
-
+            
+            # Empty object to get click coordinates
+            self.empty = self.loader.loadModel("models/cannon")
+            self.empty.setPos(0, 0 ,5)
+            self.empty.setScale(10, -10, 10)
+            
+            '''
             self.boardLines = self.loader.loadModel("models/boardLines")
             self.boardBody = self.loader.loadModel("models/boardBody")
             self.boardBase = self.loader.loadModel("models/boardBase")
-            self.king = self.loader.loadModel("models/cannon")
-            self.scene = self.loader.loadModel("models/environment")
             
-            # Any model must be parented to the self.render 'tree' to render
-            # Reparent the model to render.
+            self.scene = self.loader.loadModel("models/environment")
+            '''
+            '''
             self.boardLines.reparentTo(self.render)
             self.boardBody.reparentTo(self.render)
             self.boardBase.reparentTo(self.render)
-            self.king.reparentTo(self.render)
             
-
             self.boardLines.setScale(100, 100, 100)
             self.boardBody.setScale(100, 100, 100)
             self.boardBase.setScale(100, 100, 100)
-            self.king.setPos(0, 0 ,5)
-            self.king.setScale(10, -10, 10)
-        
+            
+            '''
+            #From  Panda3D Chessboard demo
+
+            #Object that detects collisions
             self.picker = CollisionTraverser()  
+            #Holds all objects that are collided
             self.pq = CollisionHandlerQueue()  
             
-            # Make a collision node for our picker ray
+            # Make a collision node for our picker ray (will be the thing colliding)
             self.pickerNode = CollisionNode('mouseRay')
             # Attach that node to the camera since the ray will need to be positioned
             # relative to it
@@ -405,9 +402,8 @@ def runGame():
             # Register the ray as something that can cause collisions
             self.picker.addCollider(self.pickerNP, self.pq)
 
-            # Add the spinCameraTask procedure to the task manager.
-            # This is called every few seconds
-        
+            # Own Code
+            #Event handlers
             self.accept('mouse1',self.keyHandler, ['mouse1'])
             self.accept('arrow_left', self.keyHandler, ['arrow_left'])
             self.accept('arrow_right', self.keyHandler, ['arrow_right'])
@@ -415,23 +411,16 @@ def runGame():
             self.accept('arrow_down', self.keyHandler, ['arrow_down'])
             self.accept('k', self.keyHandler, ['k'])
             self.accept('j', self.keyHandler, ['j'])
+            self.accept('h', self.keyHandler, ['h'])
 
+            #Camera default position
             self.camera.setPos(0, 0, 400)
             self.camera.setHpr(0, -90, 0)
           
-        # From Panda3D chessboard demo
-        def getPosition(self, mousepos):
-            self.pickerRay.setFromLens(base.camNode, mousepos.getX(),mousepos.getY()) 
-            self.picker.traverse(render) 
-            if self.queue.getNumEntries() > 0: 
-                self.queue.sortEntries() 
-                self.position = self.queue.getEntry(0).getSurfacePoint(self.environ) 
-                return None
-        
-        # get the mouse position
-        
+        # Event function for mouse click
         def mousePressed(self):
             if self.mouseWatcherNode.hasMouse():
+                # Collision detection logic form Panda3D chessboard demo
                 mpos = self.mouseWatcherNode.getMouse()
 
                 self.pickerRay.setFromLens(self.camNode, mpos.getX(), mpos.getY())
@@ -439,13 +428,12 @@ def runGame():
                 nearPoint = render.getRelativePoint(camera, self.pickerRay.getOrigin())
     
                 nearVec = render.getRelativeVector(camera, self.pickerRay.getDirection())
-                self.king.setPos(PointAtZ(.5, nearPoint, nearVec))
-                (x,y,z) = self.king.getPos()
-                print(x, y, z)
-                self.king.setPos(x, y, z + 3)
-                print(self.camera.getPos())
+                self.empty.setPos(PointAtZ(.5, nearPoint, nearVec))
+                (x,y,z) = self.empty.getPos()
+                print(x,y,z)
+                Controller.selectAndMove(x,y, self)
         
-
+        # Events for key presses
         def keyHandler(self,key):
             if(key == "arrow_left"):
                 pass
@@ -455,6 +443,8 @@ def runGame():
                 pass
             elif(key == "arrow_down"):
                 pass
+            elif(key == 'h'):
+                Model.gameBoard.printBoard()
             elif(key == "k"):
                 self.disableMouse()
             elif(key == 'j'):
@@ -464,10 +454,443 @@ def runGame():
                 base.enableMouse()
             elif(key == 'mouse1'):
                 self.mousePressed()
+                pass
+    
+    # Contains all game data and important variables
+    class Model(object):    
+        
+        gameBoard = Board()
+        margin = 50
+        boardRadius = 50
+        middleRow = gameBoard.rows // 2 - 1
+        middleCol = gameBoard.cols // 2 
+        pieces = dict()
+        pieces['Red'] = []
+        pieces['Black'] = []
+        width, height = 500, 600
+        selectedPiece = None
+        selectedPosition = (-1,-1)
+        currentPlayer = 'Red'
+        boardLines = None
+        boardBody = None
+        boardBase = None
+        showBase = None
 
+    class Controller(object):
+
+        @staticmethod
+        def initGame(showBase):
+            Controller.createPieces(showBase)
+            Controller.putPiecesInBoard(Model.gameBoard)
+            Model.gameBoard.printBoard()
+            Controller.setStaticModelProperties(showBase)
+            Controller.updatePieces(showBase)
+            Controller.setModelShowBase(showBase)
+
+        @staticmethod
+        def setModelShowBase(showBase):
+            Model.showBase = showBase
+
+        @staticmethod
+        def setStaticModelProperties(showBase):
+            Model.boardLines = showBase.loader.loadModel("models/boardLines")
+            Model.boardBody = showBase.loader.loadModel("models/boardBody")
+            Model.boardBase = showBase.loader.loadModel("models/boardBase")
+            Model.boardLines.reparentTo(showBase.render)
+            Model.boardBody.reparentTo(showBase.render)
+            Model.boardBase.reparentTo(showBase.render)
+            Model.boardLines.setScale(100, 100, 100)
+            Model.boardBody.setScale(100, 100, 100)
+            Model.boardBase.setScale(100, 100, 100)
+
+        @staticmethod
+        def updatePieces(showBase):
+            for color in Model.pieces:
+                for piece in Model.pieces[color]:
+                    piece.model.reparentTo(showBase.render)
+                    piece.model.setScale(10, -10, 10)
+                    piece.model.setPos(piece.x, piece.y, 3)
+
+        @staticmethod
+        def createPawns(board, showBase):
+            numPawns = 5
+            for i in range(numPawns):
+                bx, by = Controller.getIntersectionCoords(board, 3, 2*i)
+                rx, ry = Controller.getIntersectionCoords(board, 6, 2*i)
+                pawnModelBlack = showBase.loader.loadModel('models/pawn')
+                pawnModelRed = showBase.loader.loadModel('models/pawn')
+                Model.pieces['Black'].append(Pawn(bx, by, 'Black', pawnModelBlack))
+                Model.pieces['Red'].append(Pawn(rx, ry, 'Red', pawnModelRed))
     
+
+        @staticmethod
+        def createDoubles(board, pieceType, showBase):
+            
+            numPieces = 2
+
+            for i in range(numPieces):
+                if(pieceType == 'Rook'): 
+                    rookModelBlack = showBase.loader.loadModel("models/rook")
+                    rookModelRed = showBase.loader.loadModel("models/rook")
+                    (spacing, initialCol) = (8, 0)
+                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
+                                                            initialCol, i)
+                    Model.pieces['Black'].append(Rook(bx, by, 'Black', rookModelBlack))
+                    Model.pieces['Red'].append(Rook(rx, ry, 'Red', rookModelRed))
+                elif(pieceType == 'Knight'):
+                    knightModelBlack = showBase.loader.loadModel("models/knight")
+                    knightModelRed = showBase.loader.loadModel("models/knight")
+                    (spacing, initialCol) = (6, 1)
+                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
+                                                            initialCol, i)
+                    Model.pieces['Black'].append(Knight(bx, by, 'Black', knightModelBlack))
+                    Model.pieces['Red'].append(Knight(rx, ry, 'Red', knightModelRed))
+                elif(pieceType == 'Cannon'):
+                    cannonModelBlack = showBase.loader.loadModel("models/cannon")
+                    cannonModelRed = showBase.loader.loadModel("models/cannon")
+                    (spacing, initialCol) = (6, 1)
+                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
+                                                            initialCol, i)
+                    Model.pieces['Black'].append(Cannon(bx, by, 'Black', cannonModelBlack))
+                    Model.pieces['Red'].append(Cannon(rx, ry, 'Red', cannonModelRed))
+                elif(pieceType == 'Minister'): 
+                    ministerModelBlack = showBase.loader.loadModel("models/minister")
+                    ministerModelRed = showBase.loader.loadModel("models/minister")
+                    (spacing, initialCol) = (4, 2)
+                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
+                                                            initialCol, i)
+                    Model.pieces['Black'].append(Minister(bx, by, 'Black', ministerModelBlack))
+                    Model.pieces['Red'].append(Minister(rx, ry, 'Red', ministerModelRed))
+                elif(pieceType == 'Guard'): 
+                    guardModelBlack = showBase.loader.loadModel("models/guard")
+                    guardModelRed = showBase.loader.loadModel("models/guard")
+                    (spacing, initialCol) = (2, 3)
+                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
+                                                            initialCol, i)
+                    Model.pieces['Black'].append(Guard(bx, by, 'Black', guardModelBlack))
+                    Model.pieces['Red'].append(Guard(rx, ry, 'Red', guardModelRed))
+
+        @staticmethod        
+        def getBxByRxRyHelper(board, pieceType, spacing, initialCol, i):
+            if(pieceType == 'Cannon'):
+                bx,by = Controller.getIntersectionCoords(board, 2, initialCol + i*spacing)
+                rx,ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-3,
+                        initialCol + i*spacing)
+            else:
+                bx,by = Controller.getIntersectionCoords(board, 0, initialCol + i*spacing)
+                rx,ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1,
+                        initialCol + i*spacing)
+            return (bx,by,rx,ry)
+
+        @staticmethod
+        def createKings(board, showBase):
+            kingModelBlack = showBase.loader.loadModel("models/king")
+            kingModelRed = showBase.loader.loadModel("models/king")
+            bx, by = Controller.getIntersectionCoords(board, 0, Model.middleCol)
+            rx, ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1, Model.middleCol)
+            Model.pieces['Black'].append(King(bx, by, 'Black', kingModelBlack))
+            Model.pieces['Red'].append(King(rx, ry, 'Red', kingModelRed))
+
+        @staticmethod
+        def createPieces(showBase):
+            Controller.createPawns(Model.gameBoard, showBase)
+            Controller.createDoubles(Model.gameBoard, 'Rook' , showBase)
+            Controller.createDoubles(Model.gameBoard, 'Cannon' , showBase)
+            Controller.createDoubles(Model.gameBoard, 'Knight' , showBase)
+            Controller.createDoubles(Model.gameBoard, 'Minister' , showBase)
+            Controller.createDoubles(Model.gameBoard, 'Guard' , showBase)
+            Controller.createKings(Model.gameBoard, showBase)
     
-    '''
+        @staticmethod
+        def getCellDimensions(board, row, col):
+            
+            x0 = -Model.gameBoard.radiusX + col*(board.cellWidth)
+            y0 = Model.gameBoard.radiusY - row*(board.cellHeight)
+            x1 = -Model.gameBoard.radiusX + (col+1)*(board.cellWidth)
+            y1 = Model.gameBoard.radiusY - (row+1)*(board.cellHeight)
+
+            return (x0,y0,x1,y1)
+        
+        @staticmethod
+        def getIntersectionCoords(board, row, col):
+            x = -Model.gameBoard.radiusX + col*(board.cellWidth)
+            y = Model.gameBoard.radiusY - row*(board.cellHeight)
+            return (x, y)
+        
+        @staticmethod
+        def isNearBoard(x, y):
+            return ((-Model.gameBoard.radiusX - Piece.r <= x <= Model.gameBoard.radiusX + Piece.r) and
+                    (-Model.gameBoard.radiusY - Piece.r <= y <= Model.gameBoard.radiusY + Piece.r))
+
+        @staticmethod
+        def getIntersection(board, x, y):
+            row = roundHalfUp((Model.gameBoard.radiusY - y) / board.cellHeight)
+            col = roundHalfUp((Model.gameBoard.radiusX + x) / board.cellWidth)
+            return (row,col)
+
+        @staticmethod
+        def putPiecesInBoard(board):
+            for color in Model.pieces:
+                for piece in Model.pieces[color]:
+                    (row,col) = Controller.getIntersection(board, piece.x, piece.y)
+                    board.pieces[row][col] = piece
+        @staticmethod
+        def selectPiece(board, row, col):
+            if(board.pieces[row][col] != None):
+                Model.selectedPosition = (row, col)
+                return board.pieces[row][col]
+        
+        @staticmethod
+        def removeReplacedPiece(board, row, col):
+            color = Model.gameBoard.pieces[row][col].color
+            index = Model.pieces[color].index(Model.gameBoard.pieces[row][col])
+            removedPiece = Model.pieces[color].pop(index)
+            (x,y,z) = removedPiece.model.getPos()
+            removedPiece.model.setPos(x,y,z-10)
+            print('Removed Piece: ', removedPiece)
+            return removedPiece
+
+        @staticmethod
+        def revertReplacedPiece(board, row, col, removedPiece):
+            if(removedPiece.color == 'Red'):
+                Model.pieces['Red'].append(removedPiece)
+            else:
+                Model.pieces['Black'].append(removedPiece)
+            (x,y,z) = removedPiece.model.getPos()
+            removedPiece.model.setPos(x,y,z+10)
+
+        @staticmethod
+        def placePiece(board, oldRow, oldCol, row, col):
+            (newX, newY) = Controller.getIntersectionCoords(Model.gameBoard, row, col)
+            (oldX, oldY) = (Model.selectedPiece.x, Model.selectedPiece.y)
+            removedPiece = None
+
+            if(Model.gameBoard.pieces[row][col] != None):
+                removedPiece = Controller.removeReplacedPiece(board, row, col)
+
+            (Model.selectedPiece.x, Model.selectedPiece.y) = (newX, newY)
+            
+            Model.gameBoard.pieces[oldRow][oldCol] = None
+            Model.gameBoard.pieces[row][col] = Model.selectedPiece
+
+            if(Controller.kingsFacing(Model.gameBoard)):
+                Model.gameBoard.pieces[oldRow][oldCol] = Model.selectedPiece
+                (Model.selectedPiece.x, Model.selectedPiece.y) = (oldX, oldY)
+                if(removedPiece != None):
+                    Controller.revertReplacedPiece(Model.gameBoard, row, col, removedPiece)
+                return False
+            return True
+
+
+        @staticmethod
+        def switchPlayer():
+            Model.currentPlayer = 'Black' if(Model.currentPlayer == 'Red') else 'Red'            
+
+        @staticmethod
+        def findKings(board):
+            foundRedKing = False
+            foundBlackKing = False
+            for row in range(len(board.pieces)):
+                for col in range(len(board.pieces[0])):
+                    if(isinstance(board.pieces[row][col], King)):
+                        piece = board.pieces[row][col]
+                        if(piece.color == 'Red'):
+                            (redKingRow, redKingCol) = (row, col)
+                            foundRedKing = True
+                        else:
+                            (blackKingRow, blackKingCol) = (row, col)
+                            foundBlackKing = True
+            if(foundRedKing and foundBlackKing):
+                return (redKingRow, redKingCol, blackKingRow, blackKingCol)
+            return (0,0)
+
+        @staticmethod
+        def kingsFacing(board):
+            if(len(Controller.findKings(board)) == 4):
+                (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
+                if(rkCol != bkCol):
+                    return False
+                else:
+                    checkIndex = bkRow + 1
+                    while(checkIndex < rkRow):
+                        if(board.pieces[checkIndex][bkCol] != None):
+                            return False
+                        checkIndex += 1
+                    
+                    return True
+            else:
+                pass
+                # Game Over state
+        
+        @staticmethod
+        def checkGameOver(board):
+            final = []
+            color = 'Red' if(Model.currentPlayer == 'Red') else 'Black'
+            for piece in Model.pieces[color]:
+                (row, col) = Controller.getIntersection(board, piece.x, piece.y)
+                legalMoves = piece.getLegalMoves(board, row, col)
+                refinedMoves = Controller.refineLegalMoves(board, row, col, piece, legalMoves)
+                final.extend(refinedMoves)
+                
+            if(len(final) == 0):
+                print('GameOver CHECKMATE!')
+                pass
+                    
+
+        @staticmethod
+        def refineLegalMoves(board, row, col, piece, moves):
+            changedMoves = copy.deepcopy(moves)
+            for (newRow, newCol) in moves:
+                #Temp changes
+                removedPiece = None
+                board.pieces[row][col] = None
+                if(board.pieces[newRow][newCol] != None):
+                    removedPiece = board.pieces[newRow][newCol]
+                board.pieces[newRow][newCol] = piece
+
+                # Check if valid
+                if(Controller.kingsFacing(Model.gameBoard)):
+                    changedMoves.remove((newRow, newCol))
+            
+                # Revert temp changes
+                if(removedPiece != None):
+                    board.pieces[newRow][newCol] = removedPiece
+                else: 
+
+                    board.pieces[newRow][newCol] = None
+                board.pieces[row][col] = piece
+            return changedMoves
+                    
+
+        @staticmethod
+        def updatePieceCoords(piece, row, col):
+            (x,y) = Controller.getIntersectionCoords(row, col)
+            (piece.x, piece.y) = (x,y)
+
+        @staticmethod
+        def isInCheck(board, kingPiece):
+            (kingRow, kingCol) = Controller.getIntersection(Model.gameBoard, kingPiece.x, kingPiece.y)
+            if kingPiece.color == 'Red':
+                for piece in Model.pieces['Black']:
+                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
+                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
+                        return True
+                return False
+            else:
+                for piece in Model.pieces['Red']:
+                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
+                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
+                        return True
+                return False
+        
+        @staticmethod
+        def selectAndMove(x,y, showBase):
+            print('here')
+            #Only if click in board
+            if(Controller.isNearBoard(x, y)):
+                print('checking!')
+                (row,col) = Controller.getIntersection(Model.gameBoard, x, y)
+                (oldRow, oldCol) = Model.selectedPosition
+                print(row, col)
+                # Select a piece if none selected
+                if((Model.selectedPiece == None) and 
+                   (Model.gameBoard.pieces[row][col] != None)):
+                    print('Here!')
+                    print(Model.gameBoard.pieces[row][col].color)
+                    if(Model.currentPlayer == Model.gameBoard.pieces[row][col].color):
+                        Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
+                        legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
+                        print('Legal Moves: ', legalMoves)
+                        refinedMoves = Controller.refineLegalMoves(Model.gameBoard, row, col, Model.selectedPiece, legalMoves)
+                        print('Selected piece: ', Model.selectedPiece)
+                        print('Legal Moves: ', refinedMoves)
+                
+                #Piece is selected already
+                elif(Model.selectedPiece != None):
+                    legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol)
+                    refinedMoves = Controller.refineLegalMoves(Model.gameBoard, oldRow, oldCol, Model.selectedPiece, legalMoves)
+                    
+                    # User click on selected piece, deselects it
+                    if(Model.selectedPiece == Model.gameBoard.pieces[row][col]):
+                        Model.selectedPiece = None
+                        Model.selectedPosition = (-1,-1)
+                        print('Deselected Piece!')
+
+                    # User clicks on valid move area
+                    elif((Model.selectedPiece != Model.gameBoard.pieces[row][col]) and 
+                        ((row, col) in refinedMoves)):
+                        success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
+                        if(success):    
+                            Model.selectedPiece.moveCount += 1
+                            Model.selectedPiece = None
+                            Model.selectedPosition = (-1,-1)
+                            Controller.switchPlayer()
+                            print('Moved piece!')
+            
+            Controller.updatePieces(showBase)
+            print('updated!')
+            #Check if GameOver (checkmate)
+            Controller.checkGameOver(Model.gameBoard)
+
+    app = MyApp()
+    app.run()
+    
+def testGame():
+    print('Testing Game...')
+    runGame()
+
+testGame()
+
+'''
+        @staticmethod 
+        def flipBoard(board):
+            newBoard = copy.deepcopy(board)
+            rows = len(board.pieces)
+            cols = len(board.pieces[0])
+            pivotCol = cols // 2
+            pivotRow = (rows - 1) / 2
+
+            print(pivotCol, pivotRow)
+
+            for row in range(len(board.pieces)):
+                for col in range(len(board.pieces[0])):
+                    flipRowIndex = int(pivotRow - (row - pivotRow))
+                    flipColIndex = int(pivotCol - (col - pivotCol))
+                    newBoard.pieces[row][col] = board.pieces[flipRowIndex][flipColIndex]
+                    (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
+                    if(newBoard.pieces[row][col] != None):
+                        newBoard.pieces[row][col].x = newX
+                        newBoard.pieces[row][col].y = newY
+                
+            board = newBoard
+
+        @staticmethod
+        def getLocation(row, col, board):
+            if(not isInBoard(app, x, y)):
+                return(-1, -1)
+            
+            
+            return row, col        
+        
+        
+        @staticmethod
+        def getBounds(obj):
+            x0 = obj.x - obj.width / 2 
+            y0 = obj.y - obj.height / 2
+            x1 = obj.x + obj.width / 2
+            y1 = obj.y + obj.height / 2
+            return (x0, y0, x1, y1)
+
+        @staticmethod
+        def selectObstacle(x, y):
+            for obj in mode.obstacles:
+                (x0, y0, x1, y1) = mode.getBounds(obj)
+                if((x0 <= x <= x1) and (y0 <= y <= y1)):
+                    obj.isDragged = True
+                    mode.selectedObstacle = obj
+                    mode.obstacleSelected = True
+
+
     class MyModalApp(ModalApp):
         def appStarted(app):
             app.gameMode = GameMode()
@@ -538,382 +961,10 @@ def runGame():
         def redrawAll(mode, canvas):
             View.drawBoard(canvas, Model.gameBoard)
             View.drawPieces(canvas)
-        '''
-    
-    class View(object):
-        
-        @staticmethod
-        def createVisualObjects():
-            
+     
 
 
-            self.boardLines.reparentTo(self.render)
-            self.boardBody.reparentTo(self.render)
-            self.boardBase.reparentTo(self.render)
-            self.king.reparentTo(self.render)
-            
 
-            self.boardLines.setScale(100, 100, 100)
-            self.boardBody.setScale(100, 100, 100)
-            self.boardBase.setScale(100, 100, 100)
-            self.king.setPos(0, 0 ,5)
-            self.king.setScale(10, -10, 10)
-
-
-    # Contains all game data and important variables
-    class Model(object):    
-        gameBoard = Board()
-        margin = 50
-        boardRadius = 50
-        middleRow = gameBoard.rows // 2 - 1
-        middleCol = gameBoard.cols // 2 
-        pieces = dict()
-        pieces['Red'] = []
-        pieces['Black'] = []
-        width, height = 500, 600
-        selectedPiece = None
-        selectedPosition = (-1,-1)
-        currentPlayer = 'Red'
-
-    class Controller(object):
-
-        @staticmethod
-        def initGame(showBase):
-            Controller.createPieces(showBase)
-            Controller.putPiecesInBoard(Model.gameBoard)
-            Model.gameBoard.printBoard()
-            self.boardLines = self.loader.loadModel("models/boardLines")
-            self.boardBody = self.loader.loadModel("models/boardBody")
-            self.boardBase = self.loader.loadModel("models/boardBase")
-
-        @staticmethod
-        def createPawns(board, showBase):
-            numPawns = 5
-            for i in range(numPawns):
-                bx, by = Controller.getIntersectionCoords(board, 3, 2*i)
-                rx, ry = Controller.getIntersectionCoords(board, 6, 2*i)
-                pawnModel = showBase.loader.loadModel('models/pawn')
-                Model.pieces['Black'].append(Pawn(bx, by, 'Black', pawnModel))
-                Model.pieces['Red'].append(Pawn(rx, ry, 'Red', pawnModel))
-    
-
-        @staticmethod
-        def createDoubles(board, pieceType, showBase):
-            guardModel = showBase.loader.loadModel("models/guard")
-            ministerModel = showBase.loader.loadModel("models/minister")
-            knightModel = showBase.loader.loadModel("models/knight")
-            rookModel = showBase.loader.loadModel("models/rook")
-            cannonModel = showBase.loader.loadModel("models/cannon")
-            numPieces = 2
-
-            for i in range(numPieces):
-                if(pieceType == 'Rook'): 
-                    (spacing, initialCol) = (8, 0)
-                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
-                                                            initialCol, i)
-                    Model.pieces['Black'].append(Rook(bx, by, 'Black', rookModel))
-                    Model.pieces['Red'].append(Rook(rx, ry, 'Red', rookModel))
-                elif(pieceType == 'Knight'):
-                    (spacing, initialCol) = (6, 1)
-                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
-                                                            initialCol, i)
-                    Model.pieces['Black'].append(Knight(bx, by, 'Black', knight))
-                    Model.pieces['Red'].append(Knight(rx, ry, 'Red'))
-                elif(pieceType == 'Cannon'):
-                    (spacing, initialCol) = (6, 1)
-                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
-                                                            initialCol, i)
-                    Model.pieces['Black'].append(Cannon(bx, by, 'Black'))
-                    Model.pieces['Red'].append(Cannon(rx, ry, 'Red'))
-                elif(pieceType == 'Minister'): 
-                    (spacing, initialCol) = (4, 2)
-                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
-                                                            initialCol, i)
-                    Model.pieces['Black'].append(Minister(bx, by, 'Black'))
-                    Model.pieces['Red'].append(Minister(rx, ry, 'Red'))
-                elif(pieceType == 'Guard'): 
-                    (spacing, initialCol) = (2, 3)
-                    (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
-                                                            initialCol, i)
-                    Model.pieces['Black'].append(Guard(bx, by, 'Black'))
-                    Model.pieces['Red'].append(Guard(rx, ry, 'Red'))
-
-        @staticmethod        
-        def getBxByRxRyHelper(board, pieceType, spacing, initialCol, i):
-            if(pieceType == 'Cannon'):
-                bx,by = Controller.getIntersectionCoords(board, 2, initialCol + i*spacing)
-                rx,ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-3,
-                        initialCol + i*spacing)
-            else:
-                bx,by = Controller.getIntersectionCoords(board, 0, initialCol + i*spacing)
-                rx,ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1,
-                        initialCol + i*spacing)
-            return (bx,by,rx,ry)
-
-        @staticmethod
-        def createKings(board, showBase):
-            bx, by = Controller.getIntersectionCoords(board, 0, Model.middleCol)
-            rx, ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1, Model.middleCol)
-            Model.pieces['Black'].append(King(bx, by, 'Black'))
-            Model.pieces['Red'].append(King(rx, ry, 'Red'))
-
-        @staticmethod
-        def createPieces(showBase):
-            Controller.createPawns(Model.gameBoard)
-            Controller.createDoubles(Model.gameBoard, 'Rook')
-            Controller.createDoubles(Model.gameBoard, 'Cannon')
-            Controller.createDoubles(Model.gameBoard, 'Knight')
-            Controller.createDoubles(Model.gameBoard, 'Minister')
-            Controller.createDoubles(Model.gameBoard, 'Guard')
-            Controller.createKings(Model.gameBoard)
- 
-        @staticmethod
-        def getCellDimensions(board, row, col):
-            
-            x0 = Model.margin + col*(board.cellWidth)
-            y0 = Model.margin + row*(board.cellHeight)
-            x1 = Model.margin + (col+1)*(board.cellWidth)
-            y1 = Model.margin + (row+1)*(board.cellHeight)
-
-            return (x0,y0,x1,y1)
-        
-        @staticmethod
-        def getIntersectionCoords(board, row, col):
-            x = Model.margin + col*(board.cellWidth)
-            y = Model.margin + row*(board.cellHeight)
-            return (x, y)
-        
-        @staticmethod
-        def isNearBoard(x, y):
-            return ((-Model.gameBoard.width - Piece.r <= x <= Model.gameBoard.width + Piece.r) and
-                    (Model.gameBoard.height - Piece.r <= y <= Model.gameBoard.height + Piece.r))
-            '''
-            return ((Model.margin - Piece.r <= x <= Model.width - Model.margin + Piece.r) and
-                    (Model.margin - Piece.r <= y <= Model.height - Model.margin + Piece.r))
-            '''
-
-        @staticmethod
-        def getIntersection(board, x, y):
-            row = roundHalfUp((y - Model.margin) / board.cellHeight)
-            col = roundHalfUp((x - Model.margin) / board.cellWidth)
-            return (row,col)
-
-        @staticmethod
-        def putPiecesInBoard(board):
-            for color in Model.pieces:
-                for piece in Model.pieces[color]:
-                    (row,col) = Controller.getIntersection(board, piece.x, piece.y)
-                    board.pieces[row][col] = piece
-        @staticmethod
-        def selectPiece(board, row, col):
-            if(board.pieces[row][col] != None):
-                Model.selectedPosition = (row, col)
-                return board.pieces[row][col]
-        
-        @staticmethod
-        def removeReplacedPiece(board, row, col):
-            color = Model.gameBoard.pieces[row][col].color
-            index = Model.pieces[color].index(Model.gameBoard.pieces[row][col])
-            removedPiece = Model.pieces[color].pop(index)
-            print('Removed Piece: ', removedPiece)
-            return removedPiece
-
-        @staticmethod
-        def revertReplacedPiece(board, row, col, removedPiece):
-            if(removedPiece.color == 'Red'):
-                Model.pieces['Red'].append(removedPiece)
-            else:
-                Model.pieces['Black'].append(removedPiece)
-
-        @staticmethod
-        def placePiece(board, oldRow, oldCol, row, col):
-            (newX, newY) = Controller.getIntersectionCoords(Model.gameBoard, row, col)
-            (oldX, oldY) = (Model.selectedPiece.x, Model.selectedPiece.y)
-            removedPiece = None
-
-            if(Model.gameBoard.pieces[row][col] != None):
-                removedPiece = Controller.removeReplacedPiece(board, row, col)
-
-            (Model.selectedPiece.x, Model.selectedPiece.y) = (newX, newY)
-            
-            Model.gameBoard.pieces[oldRow][oldCol] = None
-            Model.gameBoard.pieces[row][col] = Model.selectedPiece
-
-            if(Controller.kingsFacing(Model.gameBoard)):
-                Model.gameBoard.pieces[oldRow][oldCol] = Model.selectedPiece
-                (Model.selectedPiece.x, Model.selectedPiece.y) = (oldX, oldY)
-                if(removedPiece != None):
-                    Controller.revertReplacedPiece(Model.gameBoard, row, col, removedPiece)
-                return False
-            return True
-
-
-        @staticmethod
-        def switchPlayer():
-            Model.currentPlayer = 'Black' if(Model.currentPlayer == 'Red') else 'Red'            
-
-        @staticmethod
-        def findKings(board):
-            foundRedKing = False
-            foundBlackKing = False
-            for row in range(len(board.pieces)):
-                for col in range(len(board.pieces[0])):
-                    if(isinstance(board.pieces[row][col], King)):
-                        piece = board.pieces[row][col]
-                        if(piece.color == 'Red'):
-                            (redKingRow, redKingCol) = (row, col)
-                            foundRedKing = True
-                        else:
-                            (blackKingRow, blackKingCol) = (row, col)
-                            foundBlackKing = True
-            if(foundRedKing and foundBlackKing):
-                return (redKingRow, redKingCol, blackKingRow, blackKingCol)
-            return None
-
-        @staticmethod
-        def kingsFacing(board):
-            if(len(Controller.findKings(board)) == 4):
-                (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
-                if(rkCol != bkCol):
-                    return False
-                else:
-                    checkIndex = bkRow + 1
-                    while(checkIndex < rkRow):
-                        
-                        if(board.pieces[checkIndex][bkCol] != None):
-                            return False
-                        checkIndex += 1
-
-                    return True
-            else:
-                pass
-                # Game Over state
-        
-        @staticmethod
-        def checkGameOver(board):
-            final = []
-            color = 'Red' if(Model.currentPlayer == 'Red') else 'Black'
-            for piece in Model.pieces[color]:
-                (row, col) = Controller.getIntersection(board, piece.x, piece.y)
-                legalMoves = piece.getLegalMoves(board, row, col)
-                refinedMoves = Controller.refineLegalMoves(board, row, col, piece, legalMoves)
-                final.extend(refinedMoves)
-                
-            if(len(final) == 0):
-                print('GameOver CHECKMATE!')
-                pass
-                    
-
-        @staticmethod
-        def refineLegalMoves(board, row, col, piece, moves):
-            changedMoves = copy.deepcopy(moves)
-            for (newRow, newCol) in moves:
-                #Temp changes
-                removedPiece = None
-                board.pieces[row][col] = None
-                if(board.pieces[newRow][newCol] != None):
-                    removedPiece = board.pieces[newRow][newCol]
-                board.pieces[newRow][newCol] = piece
-
-                # Check if valid
-                if(Controller.kingsFacing(Model.gameBoard)):
-                    changedMoves.remove((newRow, newCol))
-            
-                # Revert temp changes
-                if(removedPiece != None):
-                    board.pieces[newRow][newCol] = removedPiece
-                else: 
-
-                    board.pieces[newRow][newCol] = None
-                board.pieces[row][col] = piece
-            return changedMoves
-                    
-
-        @staticmethod
-        def updatePieceCoords(piece, row, col):
-            (x,y) = Controller.getIntersectionCoords(row, col)
-            (piece.x, piece.y) = (x,y)
-
-        @staticmethod
-        def isInCheck(board, kingPiece):
-            (kingRow, kingCol) = Controller.getIntersection(Model.gameBoard, kingPiece.x, kingPiece.y)
-            if kingPiece.color == 'Red':
-                for piece in Model.pieces['Black']:
-                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
-                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
-                        return True
-                return False
-            else:
-                for piece in Model.pieces['Red']:
-                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
-                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
-                        return True
-                return False
-
-        '''
-
-        
-
-        @staticmethod 
-        def flipBoard(board):
-            newBoard = copy.deepcopy(board)
-            rows = len(board.pieces)
-            cols = len(board.pieces[0])
-            pivotCol = cols // 2
-            pivotRow = (rows - 1) / 2
-
-            print(pivotCol, pivotRow)
-
-            for row in range(len(board.pieces)):
-                for col in range(len(board.pieces[0])):
-                    flipRowIndex = int(pivotRow - (row - pivotRow))
-                    flipColIndex = int(pivotCol - (col - pivotCol))
-                    newBoard.pieces[row][col] = board.pieces[flipRowIndex][flipColIndex]
-                    (newX, newY) = Controller.getIntersectionCoords(newBoard, row, col)
-                    if(newBoard.pieces[row][col] != None):
-                        newBoard.pieces[row][col].x = newX
-                        newBoard.pieces[row][col].y = newY
-                
-            board = newBoard
-
-        @staticmethod
-        def getLocation(row, col, board):
-            if(not isInBoard(app, x, y)):
-                return(-1, -1)
-            
-            
-            return row, col        
-        
-        
-        @staticmethod
-        def getBounds(obj):
-            x0 = obj.x - obj.width / 2 
-            y0 = obj.y - obj.height / 2
-            x1 = obj.x + obj.width / 2
-            y1 = obj.y + obj.height / 2
-            return (x0, y0, x1, y1)
-
-        @staticmethod
-        def selectObstacle(x, y):
-            for obj in mode.obstacles:
-                (x0, y0, x1, y1) = mode.getBounds(obj)
-                if((x0 <= x <= x1) and (y0 <= y <= y1)):
-                    obj.isDragged = True
-                    mode.selectedObstacle = obj
-                    mode.obstacleSelected = True
-        '''
-    app = MyApp()
-    app.run()
-    
-    # app = MyModalApp(width=500, height=600)
-
-def testGame():
-    print('Testing Game...')
-    runGame()
-
-testGame()
-
-'''
 class View(object):
         
         #Draws vertical and horizontal board lines
