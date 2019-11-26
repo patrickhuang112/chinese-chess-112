@@ -49,7 +49,7 @@ class Board(object):
     def __init__(self):
         self.x, self.y, self.z = 0,0,0
         self.cols, self.rows = 9, 10
-        self.width, self.height = 164, 146
+        self.width, self.height = 400, 500
         self.cellWidth = self.width / (self.cols - 1)
         self.cellHeight = self.height / (self.rows - 1)
         self.pieces = [[None] * self.cols for row in range(self.rows)]
@@ -63,13 +63,12 @@ class Board(object):
 
 class Piece(object):
     r = 20
-    def __init__(self, x, y, color, model):
+    def __init__(self, x, y, color):
         self.x = x
         self.y = y
         self.color = color
         self.r = 20
         self.moveCount = 0
-        self.model = model
     def draw(self, canvas):
         canvas.create_oval(self.x + self.r, self.y + self.r, self.x - self.r,
                            self.y - self.r, width = 1, fill = self.color)
@@ -341,133 +340,175 @@ class Pawn(Piece):
                 col += dcol
         return legalMoves
 
+# From Panda3D Chessboard demo
+def PointAtZ(z, point, vec):
+    return point + vec * ((z - point.getZ()) / vec.getZ())
+ 
+
+class MyApp(ShowBase):
+ 
+    def __init__(self):
+        ShowBase.__init__(self)
+
+
+
+        self.dlight = DirectionalLight('my dlight')
+        self.dlnp = render.attachNewNode(self.dlight)
+        self.dlnp.setHpr(0, -90, 0)
+
+        render.setLight(self.dlnp)
+
+        self.boardLines = self.loader.loadModel("models/boardLines")
+        self.boardBody = self.loader.loadModel("models/boardBody")
+        self.boardBase = self.loader.loadModel("models/boardBase")
+        self.king = self.loader.loadModel("models/cannon")
+        self.scene = self.loader.loadModel("models/environment")
+        
+        # Any model must be parented to the self.render 'tree' to render
+        # Reparent the model to render.
+        self.boardLines.reparentTo(self.render)
+        self.boardBody.reparentTo(self.render)
+        self.boardBase.reparentTo(self.render)
+        self.king.reparentTo(self.render)
+        # self.scene.reparentTo(self.render)
+        # Apply scale and position transforms on the model.
+        # self.test.setScale(1, 1, 1)
+        
+        self.scene.setScale(0.1, 0.1, 0.1)
+        self.scene.setPos(-8, 42, 0)
+
+        self.pandaActor = Actor("models/panda-model",
+                                {"walk": "models/panda-walk4"})
+        
+        self.boardLines.setScale(100, 100, 100)
+        self.boardBody.setScale(100, 100, 100)
+        self.boardBase.setScale(100, 100, 100)
+        self.king.setPos(0, 0 ,5)
+        self.king.setScale(10, -10, 10)
+    
+        self.pandaActor.setScale(0.05, 0.05, 0.05)
+        # self.pandaActor.reparentTo(self.render)
+
+
+
+
+        self.picker = CollisionTraverser()  
+        self.pq = CollisionHandlerQueue()  
+        
+        # Make a collision node for our picker ray
+        self.pickerNode = CollisionNode('mouseRay')
+        # Attach that node to the camera since the ray will need to be positioned
+        # relative to it
+        self.pickerNP = camera.attachNewNode(self.pickerNode)
+        # Everything to be picked will use bit 1. This way if we were doing other
+        # collision we could separate it
+        self.pickerNode.setFromCollideMask(BitMask32.bit(1))
+        self.pickerRay = CollisionRay()  # Make our ray
+        # Add it to the collision node
+        self.pickerNode.addSolid(self.pickerRay)
+        # Register the ray as something that can cause collisions
+        self.picker.addCollider(self.pickerNP, self.pq)
+
+        # Add the spinCameraTask procedure to the task manager.
+        # This is called every few seconds
+        # self.taskMgr.add(self.spinCameraTask, "SpinCameraTask")
+
+
+
+
+        # self.acceptOnce('a', self.spinCamera)
+        self.accept('mouse1',self.keyHandler, ['mouse1'])
+        self.accept('arrow_left', self.keyHandler, ['arrow_left'])
+        self.accept('arrow_right', self.keyHandler, ['arrow_right'])
+        self.accept('arrow_up', self.keyHandler, ['arrow_up'])
+        self.accept('arrow_down', self.keyHandler, ['arrow_down'])
+        self.accept('k', self.keyHandler, ['k'])
+        self.accept('j', self.keyHandler, ['j'])
+        
+    
+    # From Panda3D chessboard demo
+    def getPosition(self, mousepos):
+        self.pickerRay.setFromLens(base.camNode, mousepos.getX(),mousepos.getY()) 
+        self.picker.traverse(render) 
+        if self.queue.getNumEntries() > 0: 
+            self.queue.sortEntries() 
+            self.position = self.queue.getEntry(0).getSurfacePoint(self.environ) 
+            return None
+    
+      # get the mouse position
+    
+    def mousePressed(self):
+        if self.mouseWatcherNode.hasMouse():
+            # get the mouse position
+            mpos = self.mouseWatcherNode.getMouse()
+
+            # Set the position of the ray based on the mouse position
+            self.pickerRay.setFromLens(self.camNode, mpos.getX(), mpos.getY())
+
+            # If we are dragging something, set the position of the object
+            # to be at the appropriate point over the plane of the board
+            # Gets the point described by pickerRay.getOrigin(), which is relative to
+            # camera, instead of to render
+            nearPoint = render.getRelativePoint(camera, self.pickerRay.getOrigin())
+            # Same thing with the direction of the ray
+            nearVec = render.getRelativeVector(camera, self.pickerRay.getDirection())
+            self.king.setPos(PointAtZ(.5, nearPoint, nearVec))
+            (x,y,z) = self.king.getPos()
+            print(x, y, z)
+            self.king.setPos(x, y, z + 3)
+    
+
+    def keyHandler(self,key):
+        if(key == "arrow_left"):
+            pass
+        elif(key == "arrow_right"):
+            pass
+        elif(key == "arrow_up"):
+            pass
+        elif(key == "arrow_down"):
+            pass
+        elif(key == "k"):
+            self.disableMouse()
+        elif(key == 'j'):
+            mat=Mat4(camera.getMat())
+            mat.invertInPlace()
+            base.mouseInterfaceNode.setMat(mat)
+            base.enableMouse()
+        elif(key == 'mouse1'):
+            self.mousePressed()
+        
+        '''
+        elif(key == 'mouse1'):
+            if base.mouseWatcherNode.hasMouse():
+                mpos = base.mouseWatcherNode.getMouse()  # get the mouse position
+                self.pandaActor.setPos(mpos.getX(), mpos.getY(), 2)
+                print(mpos)
+        '''
+
+    def spinCameraTask(self, task):
+        angleDegrees = task.time * 6.0
+        angleRadians = angleDegrees * (math.pi / 180.0)
+        self.camera.setPos(20 * math.sin(angleRadians), -20.0 * math.cos(angleRadians), 3)
+        self.camera.setHpr(angleDegrees, 0, 0)
+        return Task.cont
+
+
+app = MyApp()
+
+#Must be last line
+app.run()
+
+
+
+
+
+
 
 
 
 
 # ModalApp class from https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
 def runGame():
-    # From Panda3D Chessboard demo
-
-    def PointAtZ(z, point, vec):
-        return point + vec * ((z - point.getZ()) / vec.getZ())
- 
-
-    class MyApp(ShowBase):
-    
-        def __init__(self):
-            ShowBase.__init__(self)
-            
-            Controller.initGame(self)
-
-            self.disableMouse()
-
-            self.dlight = DirectionalLight('my dlight')
-            self.dlnp = render.attachNewNode(self.dlight)
-            self.dlnp.setHpr(0, -90, 0)
-
-            render.setLight(self.dlnp)
-
-            self.boardLines = self.loader.loadModel("models/boardLines")
-            self.boardBody = self.loader.loadModel("models/boardBody")
-            self.boardBase = self.loader.loadModel("models/boardBase")
-            self.king = self.loader.loadModel("models/cannon")
-            self.scene = self.loader.loadModel("models/environment")
-            
-            # Any model must be parented to the self.render 'tree' to render
-            # Reparent the model to render.
-            self.boardLines.reparentTo(self.render)
-            self.boardBody.reparentTo(self.render)
-            self.boardBase.reparentTo(self.render)
-            self.king.reparentTo(self.render)
-            
-
-            self.boardLines.setScale(100, 100, 100)
-            self.boardBody.setScale(100, 100, 100)
-            self.boardBase.setScale(100, 100, 100)
-            self.king.setPos(0, 0 ,5)
-            self.king.setScale(10, -10, 10)
-        
-            self.picker = CollisionTraverser()  
-            self.pq = CollisionHandlerQueue()  
-            
-            # Make a collision node for our picker ray
-            self.pickerNode = CollisionNode('mouseRay')
-            # Attach that node to the camera since the ray will need to be positioned
-            # relative to it
-            self.pickerNP = camera.attachNewNode(self.pickerNode)
-            # Everything to be picked will use bit 1. This way if we were doing other
-            # collision we could separate it
-            self.pickerNode.setFromCollideMask(BitMask32.bit(1))
-            self.pickerRay = CollisionRay()  # Make our ray
-            # Add it to the collision node
-            self.pickerNode.addSolid(self.pickerRay)
-            # Register the ray as something that can cause collisions
-            self.picker.addCollider(self.pickerNP, self.pq)
-
-            # Add the spinCameraTask procedure to the task manager.
-            # This is called every few seconds
-        
-            self.accept('mouse1',self.keyHandler, ['mouse1'])
-            self.accept('arrow_left', self.keyHandler, ['arrow_left'])
-            self.accept('arrow_right', self.keyHandler, ['arrow_right'])
-            self.accept('arrow_up', self.keyHandler, ['arrow_up'])
-            self.accept('arrow_down', self.keyHandler, ['arrow_down'])
-            self.accept('k', self.keyHandler, ['k'])
-            self.accept('j', self.keyHandler, ['j'])
-
-            self.camera.setPos(0, 0, 400)
-            self.camera.setHpr(0, -90, 0)
-          
-        # From Panda3D chessboard demo
-        def getPosition(self, mousepos):
-            self.pickerRay.setFromLens(base.camNode, mousepos.getX(),mousepos.getY()) 
-            self.picker.traverse(render) 
-            if self.queue.getNumEntries() > 0: 
-                self.queue.sortEntries() 
-                self.position = self.queue.getEntry(0).getSurfacePoint(self.environ) 
-                return None
-        
-        # get the mouse position
-        
-        def mousePressed(self):
-            if self.mouseWatcherNode.hasMouse():
-                mpos = self.mouseWatcherNode.getMouse()
-
-                self.pickerRay.setFromLens(self.camNode, mpos.getX(), mpos.getY())
-
-                nearPoint = render.getRelativePoint(camera, self.pickerRay.getOrigin())
-    
-                nearVec = render.getRelativeVector(camera, self.pickerRay.getDirection())
-                self.king.setPos(PointAtZ(.5, nearPoint, nearVec))
-                (x,y,z) = self.king.getPos()
-                print(x, y, z)
-                self.king.setPos(x, y, z + 3)
-                print(self.camera.getPos())
-        
-
-        def keyHandler(self,key):
-            if(key == "arrow_left"):
-                pass
-            elif(key == "arrow_right"):
-                pass
-            elif(key == "arrow_up"):
-                pass
-            elif(key == "arrow_down"):
-                pass
-            elif(key == "k"):
-                self.disableMouse()
-            elif(key == 'j'):
-                mat=Mat4(camera.getMat())
-                mat.invertInPlace()
-                base.mouseInterfaceNode.setMat(mat)
-                base.enableMouse()
-            elif(key == 'mouse1'):
-                self.mousePressed()
-
-    
-    
-    '''
     class MyModalApp(ModalApp):
         def appStarted(app):
             app.gameMode = GameMode()
@@ -538,33 +579,68 @@ def runGame():
         def redrawAll(mode, canvas):
             View.drawBoard(canvas, Model.gameBoard)
             View.drawPieces(canvas)
-        '''
+    
     
     class View(object):
         
+        #Draws vertical and horizontal board lines
         @staticmethod
-        def createVisualObjects():
-            
+        def drawBoardGrid(canvas, board):
+            #Subtract one because we are using lines, not spaces as rows/cols
+            for row in range(board.rows - 1):
+                for col in range(board.cols - 1):
+                    (x0,y0,x1,y1) = Controller.getCellDimensions(board, row, col)
+                    canvas.create_rectangle(x0,y0,x1,y1,fill = 'white', 
+                                            width = '1')
+        
+        # Draws middle 'river'
+        @staticmethod
+        def drawBoardMiddle(canvas, board):
+            # 0 represents the leftmost column
+            (x0,y0,x1,y1) = Controller.getCellDimensions(board, Model.middleRow, 0)
+            # Reassign x-coords so middle streches across entire board
+            x0, x1 = Model.margin, Model.width - Model.margin
+            canvas.create_rectangle(x0, y0, x1, y1, fill = 'white', width = '1')
+        
+        # Draws individual palace
+        @staticmethod
+        def drawIndivPalace(canvas, x0, y0, x1, y1):
+            canvas.create_line(x0, y0, x1, y1)
+            canvas.create_line(x0, y1, x1, y0)
+        
+        @staticmethod
+        # Draws red and black palaces
+        def drawBoardPalace(canvas, board):
+            leftPalaceColumn = 3
+            topBottomPalaceRow = board.rows - 3
+            (x0,y0,x1,y1) = Controller.getCellDimensions(board, 0, leftPalaceColumn)
+            x1 += board.cellWidth
+            y1 += board.cellHeight
+            View.drawIndivPalace(canvas, x0, y0, x1, y1)
 
+            (x0,y0,x1,y1) = Controller.getCellDimensions(board, topBottomPalaceRow, leftPalaceColumn)
+            x1 += board.cellWidth
+            y1 += board.cellHeight
+            View.drawIndivPalace(canvas, x0, y0, x1, y1)
 
-            self.boardLines.reparentTo(self.render)
-            self.boardBody.reparentTo(self.render)
-            self.boardBase.reparentTo(self.render)
-            self.king.reparentTo(self.render)
-            
+        # Draws entire board
+        @staticmethod
+        def drawBoard(canvas, board):
+            View.drawBoardGrid(canvas, board)
+            View.drawBoardMiddle(canvas, board)
+            View.drawBoardPalace(canvas, board)
 
-            self.boardLines.setScale(100, 100, 100)
-            self.boardBody.setScale(100, 100, 100)
-            self.boardBase.setScale(100, 100, 100)
-            self.king.setPos(0, 0 ,5)
-            self.king.setScale(10, -10, 10)
-
+        # Draws all pieces on board
+        @staticmethod
+        def drawPieces(canvas):
+            for key in Model.pieces:
+                for piece in Model.pieces[key]:
+                    piece.draw(canvas)
 
     # Contains all game data and important variables
     class Model(object):    
         gameBoard = Board()
         margin = 50
-        boardRadius = 50
         middleRow = gameBoard.rows // 2 - 1
         middleCol = gameBoard.cols // 2 
         pieces = dict()
@@ -578,46 +654,35 @@ def runGame():
     class Controller(object):
 
         @staticmethod
-        def initGame(showBase):
-            Controller.createPieces(showBase)
+        def initGame():
+            Controller.createPieces()
             Controller.putPiecesInBoard(Model.gameBoard)
             Model.gameBoard.printBoard()
-            self.boardLines = self.loader.loadModel("models/boardLines")
-            self.boardBody = self.loader.loadModel("models/boardBody")
-            self.boardBase = self.loader.loadModel("models/boardBase")
 
         @staticmethod
-        def createPawns(board, showBase):
+        def createPawns(board):
             numPawns = 5
             for i in range(numPawns):
                 bx, by = Controller.getIntersectionCoords(board, 3, 2*i)
                 rx, ry = Controller.getIntersectionCoords(board, 6, 2*i)
-                pawnModel = showBase.loader.loadModel('models/pawn')
-                Model.pieces['Black'].append(Pawn(bx, by, 'Black', pawnModel))
-                Model.pieces['Red'].append(Pawn(rx, ry, 'Red', pawnModel))
-    
-
+                Model.pieces['Black'].append(Pawn(bx, by, 'Black'))
+                Model.pieces['Red'].append(Pawn(rx, ry, 'Red'))
+        
         @staticmethod
-        def createDoubles(board, pieceType, showBase):
-            guardModel = showBase.loader.loadModel("models/guard")
-            ministerModel = showBase.loader.loadModel("models/minister")
-            knightModel = showBase.loader.loadModel("models/knight")
-            rookModel = showBase.loader.loadModel("models/rook")
-            cannonModel = showBase.loader.loadModel("models/cannon")
+        def createDoubles(board, pieceType):
             numPieces = 2
-
             for i in range(numPieces):
                 if(pieceType == 'Rook'): 
                     (spacing, initialCol) = (8, 0)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
-                    Model.pieces['Black'].append(Rook(bx, by, 'Black', rookModel))
-                    Model.pieces['Red'].append(Rook(rx, ry, 'Red', rookModel))
+                    Model.pieces['Black'].append(Rook(bx, by, 'Black'))
+                    Model.pieces['Red'].append(Rook(rx, ry, 'Red'))
                 elif(pieceType == 'Knight'):
                     (spacing, initialCol) = (6, 1)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
-                    Model.pieces['Black'].append(Knight(bx, by, 'Black', knight))
+                    Model.pieces['Black'].append(Knight(bx, by, 'Black'))
                     Model.pieces['Red'].append(Knight(rx, ry, 'Red'))
                 elif(pieceType == 'Cannon'):
                     (spacing, initialCol) = (6, 1)
@@ -651,14 +716,14 @@ def runGame():
             return (bx,by,rx,ry)
 
         @staticmethod
-        def createKings(board, showBase):
+        def createKings(board):
             bx, by = Controller.getIntersectionCoords(board, 0, Model.middleCol)
             rx, ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1, Model.middleCol)
             Model.pieces['Black'].append(King(bx, by, 'Black'))
             Model.pieces['Red'].append(King(rx, ry, 'Red'))
 
         @staticmethod
-        def createPieces(showBase):
+        def createPieces():
             Controller.createPawns(Model.gameBoard)
             Controller.createDoubles(Model.gameBoard, 'Rook')
             Controller.createDoubles(Model.gameBoard, 'Cannon')
@@ -685,12 +750,8 @@ def runGame():
         
         @staticmethod
         def isNearBoard(x, y):
-            return ((-Model.gameBoard.width - Piece.r <= x <= Model.gameBoard.width + Piece.r) and
-                    (Model.gameBoard.height - Piece.r <= y <= Model.gameBoard.height + Piece.r))
-            '''
             return ((Model.margin - Piece.r <= x <= Model.width - Model.margin + Piece.r) and
                     (Model.margin - Piece.r <= y <= Model.height - Model.margin + Piece.r))
-            '''
 
         @staticmethod
         def getIntersection(board, x, y):
@@ -902,71 +963,10 @@ def runGame():
                     mode.selectedObstacle = obj
                     mode.obstacleSelected = True
         '''
-    app = MyApp()
-    app.run()
-    
-    # app = MyModalApp(width=500, height=600)
+    app = MyModalApp(width=500, height=600)
 
 def testGame():
     print('Testing Game...')
-    runGame()
+    # runGame()
 
 testGame()
-
-'''
-class View(object):
-        
-        #Draws vertical and horizontal board lines
-        @staticmethod
-        def drawBoardGrid(canvas, board):
-            #Subtract one because we are using lines, not spaces as rows/cols
-            for row in range(board.rows - 1):
-                for col in range(board.cols - 1):
-                    (x0,y0,x1,y1) = Controller.getCellDimensions(board, row, col)
-                    canvas.create_rectangle(x0,y0,x1,y1,fill = 'white', 
-                                            width = '1')
-        
-        # Draws middle 'river'
-        @staticmethod
-        def drawBoardMiddle(canvas, board):
-            # 0 represents the leftmost column
-            (x0,y0,x1,y1) = Controller.getCellDimensions(board, Model.middleRow, 0)
-            # Reassign x-coords so middle streches across entire board
-            x0, x1 = Model.margin, Model.width - Model.margin
-            canvas.create_rectangle(x0, y0, x1, y1, fill = 'white', width = '1')
-        
-        # Draws individual palace
-        @staticmethod
-        def drawIndivPalace(canvas, x0, y0, x1, y1):
-            canvas.create_line(x0, y0, x1, y1)
-            canvas.create_line(x0, y1, x1, y0)
-        
-        @staticmethod
-        # Draws red and black palaces
-        def drawBoardPalace(canvas, board):
-            leftPalaceColumn = 3
-            topBottomPalaceRow = board.rows - 3
-            (x0,y0,x1,y1) = Controller.getCellDimensions(board, 0, leftPalaceColumn)
-            x1 += board.cellWidth
-            y1 += board.cellHeight
-            View.drawIndivPalace(canvas, x0, y0, x1, y1)
-
-            (x0,y0,x1,y1) = Controller.getCellDimensions(board, topBottomPalaceRow, leftPalaceColumn)
-            x1 += board.cellWidth
-            y1 += board.cellHeight
-            View.drawIndivPalace(canvas, x0, y0, x1, y1)
-
-        # Draws entire board
-        @staticmethod
-        def drawBoard(canvas, board):
-            View.drawBoardGrid(canvas, board)
-            View.drawBoardMiddle(canvas, board)
-            View.drawBoardPalace(canvas, board)
-
-        # Draws all pieces on board
-        @staticmethod
-        def drawPieces(canvas):
-            for key in Model.pieces:
-                for piece in Model.pieces[key]:
-                    piece.draw(canvas)
-'''

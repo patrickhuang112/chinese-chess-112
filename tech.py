@@ -21,22 +21,38 @@ class MyApp(ShowBase):
  
     def __init__(self):
         ShowBase.__init__(self)
-    
 
-        
+
+
+        self.dlight = DirectionalLight('my dlight')
+        self.dlnp = render.attachNewNode(self.dlight)
+        self.dlnp.setHpr(0, -90, 0)
+
+        render.setLight(self.dlnp)
+
+        self.boardLines = self.loader.loadModel("models/boardLines")
+        self.boardBody = self.loader.loadModel("models/boardBody")
+        self.boardBase = self.loader.loadModel("models/boardBase")
+        self.king = self.loader.loadModel("models/king")
         self.scene = self.loader.loadModel("models/environment")
         
         # Any model must be parented to the self.render 'tree' to render
         # Reparent the model to render.
-        self.scene.reparentTo(self.render)
+        self.boardLines.reparentTo(self.render)
+        self.boardBody.reparentTo(self.render)
+        self.boardBase.reparentTo(self.render)
+        self.king.reparentTo(self.render)
+        # self.scene.reparentTo(self.render)
         # Apply scale and position transforms on the model.
+        # self.test.setScale(1, 1, 1)
+        
         self.scene.setScale(0.1, 0.1, 0.1)
         self.scene.setPos(-8, 42, 0)
 
         self.pandaActor = Actor("models/panda-model",
                                 {"walk": "models/panda-walk4"})
         self.pandaActor.setScale(0.005, 0.005, 0.005)
-        self.pandaActor.reparentTo(self.render)
+        #self.pandaActor.reparentTo(self.render)
 
 
 
@@ -100,7 +116,7 @@ class MyApp(ShowBase):
             nearPoint = render.getRelativePoint(camera, self.pickerRay.getOrigin())
             # Same thing with the direction of the ray
             nearVec = render.getRelativeVector(camera, self.pickerRay.getDirection())
-            self.pandaActor.setPos(PointAtZ(.5, nearPoint, nearVec))
+            self.king.setPos(PointAtZ(.005, nearPoint, nearVec))
     
 
     def keyHandler(self,key):
