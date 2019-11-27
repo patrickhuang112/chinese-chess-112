@@ -13,7 +13,12 @@ from panda3d.core import CollisionHandlerQueue, CollisionRay
 from panda3d.core import AmbientLight, DirectionalLight, LightAttrib
 from panda3d.core import TextNode, Mat4
 from panda3d.core import LPoint3, LVector3, BitMask32
+from direct.directutil import Mopath
+from direct.interval.MopathInterval import *
 from direct.actor.Actor import Actor
+from direct.interval.LerpInterval import LerpPosInterval
+from direct.interval.IntervalGlobal import *
+from pandac.PandaModules import KeyboardButton
 
 
 
@@ -404,19 +409,36 @@ def runGame():
 
             # Own Code
             #Event handlers
+            
+            
             self.accept('mouse1',self.keyHandler, ['mouse1'])
             self.accept('arrow_left', self.keyHandler, ['arrow_left'])
             self.accept('arrow_right', self.keyHandler, ['arrow_right'])
             self.accept('arrow_up', self.keyHandler, ['arrow_up'])
             self.accept('arrow_down', self.keyHandler, ['arrow_down'])
+            self.accept('f', self.keyHandler, ['f'])
             self.accept('k', self.keyHandler, ['k'])
             self.accept('j', self.keyHandler, ['j'])
             self.accept('h', self.keyHandler, ['h'])
+            self.accept('g', self.keyHandler, ['g'])
+            
+            self.dummy = render.attachNewNode('dummyNode')
+            self.camera.reparentTo(self.dummy)
 
-            #Camera default position
-            self.camera.setPos(0, 0, 400)
-            self.camera.setHpr(0, -90, 0)
-          
+            Controller.redDefaultCamera(self)
+
+            arrow_left = KeyboardButton.left()
+            arrow_right = KeyboardButton.right()
+            
+            '''
+            is_down = base.mouseWatcherNode.is_button_down
+
+                if(is_down(arrow_left)):
+                    self.dummy.setH(self.dummy.getH() - 5)
+                elif(is_down(arrow_right)):
+                    self.dummy.setH(self.dummy.getH() + 5)
+            '''
+
         # Event function for mouse click
         def mousePressed(self):
             if self.mouseWatcherNode.hasMouse():
@@ -435,16 +457,29 @@ def runGame():
         
         # Events for key presses
         def keyHandler(self,key):
+            
             if(key == "arrow_left"):
-                pass
+                self.dummy.setH(self.dummy.getH() - 5)
+                print(self.dummy.getH())
+                print(self.camera.getPos())
+                print(self.camera.getHpr())
             elif(key == "arrow_right"):
-                pass
+                self.dummy.setH(self.dummy.getH() + 5)
+                print(self.dummy.getH())
+                print(self.camera.getPos())
+                print(self.camera.getHpr())
             elif(key == "arrow_up"):
-                pass
+                self.dummy.setP(self.dummy.getP() - 5)
             elif(key == "arrow_down"):
-                pass
+                self.dummy.setP(self.dummy.getP() + 5)
+            elif(key == 'f'):
+                self.dummy.setHpr(0,0,0)
+            elif(key == 'g'):
+                # Model.gameBoard.printBoard()
+                Controller.toDefaultRed(self)
             elif(key == 'h'):
-                Model.gameBoard.printBoard()
+                # Model.gameBoard.printBoard()
+                Controller.toDefaultBlack(self)
             elif(key == "k"):
                 self.disableMouse()
             elif(key == 'j'):
@@ -488,6 +523,39 @@ def runGame():
             Controller.setModelShowBase(showBase)
 
         @staticmethod
+        def toDefaultBlack(showBase):
+
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
+            movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 250, 400), blendType = 'easeInOut')
+            moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -120, 180), blendType = 'easeInOut')
+            moveSeq = Parallel(moveDummyHpr, movePos, moveHpr)
+            moveSeq.start()
+
+
+        @staticmethod
+        def toDefaultRed(showBase):
+            
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
+            movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, -250, 400), blendType = 'easeInOut')
+            moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -60, 0), blendType = 'easeInOut')
+            moveSeq = Parallel(moveDummyHpr, movePos, moveHpr)
+            moveSeq.start()
+
+        #Default position for Red player
+        @staticmethod
+        def redDefaultCamera(showBase):
+            
+            showBase.camera.setPos(0, -250, 400)
+            showBase.camera.setHpr(0, -60, 0)
+        
+        #Default position for Black player
+        @staticmethod
+        def blackDefaultCamera(showBase):
+            #Camera default position
+            showBase.camera.setPos(0, 250, 400)
+            showBase.camera.setHpr(0, -120, 0)
+
+        @staticmethod
         def setModelShowBase(showBase):
             Model.showBase = showBase
 
@@ -508,7 +576,9 @@ def runGame():
             for color in Model.pieces:
                 for piece in Model.pieces[color]:
                     piece.model.reparentTo(showBase.render)
-                    piece.model.setScale(10, -10, 10)
+                    piece.model.setScale(9, -9, 9)
+                    if(piece.color == 'Black'):
+                        piece.model.setHpr(-180, 0, 0)
                     piece.model.setPos(piece.x, piece.y, 3)
 
         @staticmethod
@@ -517,8 +587,8 @@ def runGame():
             for i in range(numPawns):
                 bx, by = Controller.getIntersectionCoords(board, 3, 2*i)
                 rx, ry = Controller.getIntersectionCoords(board, 6, 2*i)
-                pawnModelBlack = showBase.loader.loadModel('models/pawn')
-                pawnModelRed = showBase.loader.loadModel('models/pawn')
+                pawnModelBlack = showBase.loader.loadModel('models/blackpawn')
+                pawnModelRed = showBase.loader.loadModel('models/redpawn')
                 Model.pieces['Black'].append(Pawn(bx, by, 'Black', pawnModelBlack))
                 Model.pieces['Red'].append(Pawn(rx, ry, 'Red', pawnModelRed))
     
@@ -530,40 +600,40 @@ def runGame():
 
             for i in range(numPieces):
                 if(pieceType == 'Rook'): 
-                    rookModelBlack = showBase.loader.loadModel("models/rook")
-                    rookModelRed = showBase.loader.loadModel("models/rook")
+                    rookModelBlack = showBase.loader.loadModel("models/blackrook")
+                    rookModelRed = showBase.loader.loadModel("models/redrook")
                     (spacing, initialCol) = (8, 0)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
                     Model.pieces['Black'].append(Rook(bx, by, 'Black', rookModelBlack))
                     Model.pieces['Red'].append(Rook(rx, ry, 'Red', rookModelRed))
                 elif(pieceType == 'Knight'):
-                    knightModelBlack = showBase.loader.loadModel("models/knight")
-                    knightModelRed = showBase.loader.loadModel("models/knight")
+                    knightModelBlack = showBase.loader.loadModel("models/blackknight")
+                    knightModelRed = showBase.loader.loadModel("models/redknight")
                     (spacing, initialCol) = (6, 1)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
                     Model.pieces['Black'].append(Knight(bx, by, 'Black', knightModelBlack))
                     Model.pieces['Red'].append(Knight(rx, ry, 'Red', knightModelRed))
                 elif(pieceType == 'Cannon'):
-                    cannonModelBlack = showBase.loader.loadModel("models/cannon")
-                    cannonModelRed = showBase.loader.loadModel("models/cannon")
+                    cannonModelBlack = showBase.loader.loadModel("models/blackcannon")
+                    cannonModelRed = showBase.loader.loadModel("models/redcannon")
                     (spacing, initialCol) = (6, 1)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
                     Model.pieces['Black'].append(Cannon(bx, by, 'Black', cannonModelBlack))
                     Model.pieces['Red'].append(Cannon(rx, ry, 'Red', cannonModelRed))
                 elif(pieceType == 'Minister'): 
-                    ministerModelBlack = showBase.loader.loadModel("models/minister")
-                    ministerModelRed = showBase.loader.loadModel("models/minister")
+                    ministerModelBlack = showBase.loader.loadModel("models/blackminister")
+                    ministerModelRed = showBase.loader.loadModel("models/redminister")
                     (spacing, initialCol) = (4, 2)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
                     Model.pieces['Black'].append(Minister(bx, by, 'Black', ministerModelBlack))
                     Model.pieces['Red'].append(Minister(rx, ry, 'Red', ministerModelRed))
                 elif(pieceType == 'Guard'): 
-                    guardModelBlack = showBase.loader.loadModel("models/guard")
-                    guardModelRed = showBase.loader.loadModel("models/guard")
+                    guardModelBlack = showBase.loader.loadModel("models/blackguard")
+                    guardModelRed = showBase.loader.loadModel("models/redguard")
                     (spacing, initialCol) = (2, 3)
                     (bx,by,rx,ry) = Controller.getBxByRxRyHelper(board, pieceType, spacing, 
                                                             initialCol, i)
@@ -584,8 +654,8 @@ def runGame():
 
         @staticmethod
         def createKings(board, showBase):
-            kingModelBlack = showBase.loader.loadModel("models/king")
-            kingModelRed = showBase.loader.loadModel("models/king")
+            kingModelBlack = showBase.loader.loadModel("models/blackking")
+            kingModelRed = showBase.loader.loadModel("models/redking")
             bx, by = Controller.getIntersectionCoords(board, 0, Model.middleCol)
             rx, ry = Controller.getIntersectionCoords(board, Model.gameBoard.rows-1, Model.middleCol)
             Model.pieces['Black'].append(King(bx, by, 'Black', kingModelBlack))
@@ -683,8 +753,14 @@ def runGame():
 
 
         @staticmethod
-        def switchPlayer():
-            Model.currentPlayer = 'Black' if(Model.currentPlayer == 'Red') else 'Red'            
+        def switchPlayer(showBase):
+            if(Model.currentPlayer == 'Red'):
+                Model.currentPlayer = 'Black'  
+                Controller.toDefaultBlack(showBase)
+            else:
+                Model.currentPlayer = 'Red'    
+                Controller.toDefaultRed(showBase)
+                    
 
         @staticmethod
         def findKings(board):
@@ -824,7 +900,7 @@ def runGame():
                             Model.selectedPiece.moveCount += 1
                             Model.selectedPiece = None
                             Model.selectedPosition = (-1,-1)
-                            Controller.switchPlayer()
+                            Controller.switchPlayer(showBase)
                             print('Moved piece!')
             
             Controller.updatePieces(showBase)
