@@ -18,7 +18,7 @@ from direct.interval.MopathInterval import *
 from direct.actor.Actor import Actor
 from direct.interval.LerpInterval import LerpPosInterval
 from direct.interval.IntervalGlobal import *
-from pandac.PandaModules import KeyboardButton
+from panda3d.core import KeyboardButton
 
 
 
@@ -362,6 +362,7 @@ def runGame():
             self.dlight = DirectionalLight('my dlight')
             self.dlnp = render.attachNewNode(self.dlight)
             self.dlnp.setHpr(0, -90, 0)
+            self.dlnp.setPos(0, 0 , 500)
             render.setLight(self.dlnp)
             
             # Empty object to get click coordinates
@@ -410,8 +411,8 @@ def runGame():
             # Own Code
             #Event handlers
             
+            '''
             
-            self.accept('mouse1',self.keyHandler, ['mouse1'])
             self.accept('arrow_left', self.keyHandler, ['arrow_left'])
             self.accept('arrow_right', self.keyHandler, ['arrow_right'])
             self.accept('arrow_up', self.keyHandler, ['arrow_up'])
@@ -421,15 +422,16 @@ def runGame():
             self.accept('j', self.keyHandler, ['j'])
             self.accept('h', self.keyHandler, ['h'])
             self.accept('g', self.keyHandler, ['g'])
-            
+            '''
+
             self.dummy = render.attachNewNode('dummyNode')
             self.camera.reparentTo(self.dummy)
 
             Controller.redDefaultCamera(self)
+            self.accept('mouse1',self.keyHandler, ['mouse1'])
+            self.taskMgr.add(self.checkKeys, "CheckKeysTask")
 
-            arrow_left = KeyboardButton.left()
-            arrow_right = KeyboardButton.right()
-            
+
             '''
             is_down = base.mouseWatcherNode.is_button_down
 
@@ -438,6 +440,63 @@ def runGame():
                 elif(is_down(arrow_right)):
                     self.dummy.setH(self.dummy.getH() + 5)
             '''
+        def checkKeys (self, task):
+            arrow_left = KeyboardButton.left()
+            arrow_right = KeyboardButton.right()
+            arrow_up = KeyboardButton.up()
+            arrow_down = KeyboardButton.down()
+            j = KeyboardButton.ascii_key('j')
+            k = KeyboardButton.ascii_key('k')
+            w = KeyboardButton.ascii_key('w')
+            a = KeyboardButton.ascii_key('a')
+            s = KeyboardButton.ascii_key('s')
+            d = KeyboardButton.ascii_key('d')
+
+            isDown = base.mouseWatcherNode.is_button_down
+
+            if(isDown(arrow_left)):
+                (h,p,r) = self.dummy.getHpr()
+                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h-10, p, r))
+                moveDummyHpr.start()
+            elif(isDown(arrow_right)):
+                (h,p,r) = self.dummy.getHpr()
+                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h+10, p, r))
+                moveDummyHpr.start()
+            elif(isDown(arrow_up)):
+                (h,p,r) = self.dummy.getHpr()
+                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-10, r))
+                moveDummyHpr.start()
+            elif(isDown(arrow_down)):
+                (h,p,r) = self.dummy.getHpr()
+                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p+10, r))
+                moveDummyHpr.start()
+            if(isDown(w)):
+                (x,y,z) = self.dummy.getPos()
+                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x, y+10, z))
+                moveCam.start()
+            elif(isDown(s)):
+                (x,y,z) = self.dummy.getPos()
+                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x, y-10, z))
+                moveCam.start()
+            elif(isDown(a)):
+                (x,y,z) = self.dummy.getPos()
+                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x-10, y, z))
+                moveCam.start()
+            elif(isDown(d)):
+                (x,y,z) = self.dummy.getPos()
+                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x+10, y, z))
+                moveCam.start()
+            elif(isDown(j)):
+                (x,y,z) = self.camera.getPos()
+                movePos = LerpPosInterval(self.camera, 0.25, LPoint3(0.8*x, 0.8*y, 0.8*z))
+                movePos.start()
+            elif(isDown(k)):
+                (x,y,z) = self.camera.getPos()
+                movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
+                movePos.start()
+            
+            return Task.cont
+
 
         # Event function for mouse click
         def mousePressed(self):
@@ -457,22 +516,7 @@ def runGame():
         
         # Events for key presses
         def keyHandler(self,key):
-            
-            if(key == "arrow_left"):
-                self.dummy.setH(self.dummy.getH() - 5)
-                print(self.dummy.getH())
-                print(self.camera.getPos())
-                print(self.camera.getHpr())
-            elif(key == "arrow_right"):
-                self.dummy.setH(self.dummy.getH() + 5)
-                print(self.dummy.getH())
-                print(self.camera.getPos())
-                print(self.camera.getHpr())
-            elif(key == "arrow_up"):
-                self.dummy.setP(self.dummy.getP() - 5)
-            elif(key == "arrow_down"):
-                self.dummy.setP(self.dummy.getP() + 5)
-            elif(key == 'f'):
+            if(key == 'f'):
                 self.dummy.setHpr(0,0,0)
             elif(key == 'g'):
                 # Model.gameBoard.printBoard()
@@ -524,22 +568,24 @@ def runGame():
 
         @staticmethod
         def toDefaultBlack(showBase):
-
+            
+            moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
             movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 250, 400), blendType = 'easeInOut')
             moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -120, 180), blendType = 'easeInOut')
-            moveSeq = Parallel(moveDummyHpr, movePos, moveHpr)
-            moveSeq.start()
+            movePar = Parallel(moveDummyHpr, moveDummyPos, movePos, moveHpr)
+            movePar.start()
 
 
         @staticmethod
         def toDefaultRed(showBase):
             
+            moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
             movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, -250, 400), blendType = 'easeInOut')
             moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -60, 0), blendType = 'easeInOut')
-            moveSeq = Parallel(moveDummyHpr, movePos, moveHpr)
-            moveSeq.start()
+            movePar = Parallel(moveDummyHpr, moveDummyPos, movePos, moveHpr)
+            movePar.start()
 
         #Default position for Red player
         @staticmethod
