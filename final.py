@@ -10,7 +10,7 @@ from direct.task.Task import Task
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import CollisionTraverser, CollisionNode
 from panda3d.core import CollisionHandlerQueue, CollisionRay
-from panda3d.core import AmbientLight, DirectionalLight, LightAttrib
+from panda3d.core import DirectionalLight, PointLight, LightAttrib
 from panda3d.core import TextNode, Mat4
 from panda3d.core import LPoint3, LVector3, BitMask32
 from direct.directutil import Mopath
@@ -354,97 +354,24 @@ def runGame():
     
         def __init__(self):
             ShowBase.__init__(self)
-            
-            self.disableMouse()
+            Controller.createLighting(self)
             Controller.initGame(self)
+            Controller.createCollisionChecker(self)
+            Controller.setMenuCamera(self)
 
-            #Lighting for scene
-            self.dlight = DirectionalLight('my dlight')
-            self.dlnp = render.attachNewNode(self.dlight)
-            self.dlnp.setHpr(0, -90, 0)
-            self.dlnp.setPos(0, 0 , 500)
-            render.setLight(self.dlnp)
-            
-            # Empty object to get click coordinates
-            self.empty = self.loader.loadModel("models/cannon")
-            self.empty.setPos(0, 0 ,5)
-            self.empty.setScale(10, -10, 10)
-            
-            '''
-            self.boardLines = self.loader.loadModel("models/boardLines")
-            self.boardBody = self.loader.loadModel("models/boardBody")
-            self.boardBase = self.loader.loadModel("models/boardBase")
-            
-            self.scene = self.loader.loadModel("models/environment")
-            '''
-            '''
-            self.boardLines.reparentTo(self.render)
-            self.boardBody.reparentTo(self.render)
-            self.boardBase.reparentTo(self.render)
-            
-            self.boardLines.setScale(100, 100, 100)
-            self.boardBody.setScale(100, 100, 100)
-            self.boardBase.setScale(100, 100, 100)
-            
-            '''
-            #From  Panda3D Chessboard demo
-
-            #Object that detects collisions
-            self.picker = CollisionTraverser()  
-            #Holds all objects that are collided
-            self.pq = CollisionHandlerQueue()  
-            
-            # Make a collision node for our picker ray (will be the thing colliding)
-            self.pickerNode = CollisionNode('mouseRay')
-            # Attach that node to the camera since the ray will need to be positioned
-            # relative to it
-            self.pickerNP = camera.attachNewNode(self.pickerNode)
-            # Everything to be picked will use bit 1. This way if we were doing other
-            # collision we could separate it
-            self.pickerNode.setFromCollideMask(BitMask32.bit(1))
-            self.pickerRay = CollisionRay()  # Make our ray
-            # Add it to the collision node
-            self.pickerNode.addSolid(self.pickerRay)
-            # Register the ray as something that can cause collisions
-            self.picker.addCollider(self.pickerNP, self.pq)
-
-            # Own Code
-            #Event handlers
-            
-            '''
-            
-            self.accept('arrow_left', self.keyHandler, ['arrow_left'])
-            self.accept('arrow_right', self.keyHandler, ['arrow_right'])
-            self.accept('arrow_up', self.keyHandler, ['arrow_up'])
-            self.accept('arrow_down', self.keyHandler, ['arrow_down'])
-            self.accept('f', self.keyHandler, ['f'])
-            self.accept('k', self.keyHandler, ['k'])
-            self.accept('j', self.keyHandler, ['j'])
-            self.accept('h', self.keyHandler, ['h'])
-            self.accept('g', self.keyHandler, ['g'])
-            '''
-
-            self.dummy = render.attachNewNode('dummyNode')
-            self.camera.reparentTo(self.dummy)
-
-            Controller.redDefaultCamera(self)
-            self.accept('mouse1',self.keyHandler, ['mouse1'])
+            # Check for mouse and keys
+            self.accept('mouse1', self.keyHandler, ['mouse1'])
+            self.accept('space', self.keyHandler, ['space'])
+            self.accept('escape', self.keyHandler, ['space'])
             self.taskMgr.add(self.checkKeys, "CheckKeysTask")
-
-
-            '''
-            is_down = base.mouseWatcherNode.is_button_down
-
-                if(is_down(arrow_left)):
-                    self.dummy.setH(self.dummy.getH() - 5)
-                elif(is_down(arrow_right)):
-                    self.dummy.setH(self.dummy.getH() + 5)
-            '''
+    
         def checkKeys (self, task):
             arrow_left = KeyboardButton.left()
             arrow_right = KeyboardButton.right()
             arrow_up = KeyboardButton.up()
             arrow_down = KeyboardButton.down()
+            space = KeyboardButton.space()
+            escape = KeyboardButton.escape()
             j = KeyboardButton.ascii_key('j')
             k = KeyboardButton.ascii_key('k')
             w = KeyboardButton.ascii_key('w')
@@ -453,48 +380,64 @@ def runGame():
             d = KeyboardButton.ascii_key('d')
 
             isDown = base.mouseWatcherNode.is_button_down
-
-            if(isDown(arrow_left)):
-                (h,p,r) = self.dummy.getHpr()
-                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h-10, p, r))
-                moveDummyHpr.start()
-            elif(isDown(arrow_right)):
-                (h,p,r) = self.dummy.getHpr()
-                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h+10, p, r))
-                moveDummyHpr.start()
-            elif(isDown(arrow_up)):
-                (h,p,r) = self.dummy.getHpr()
-                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-10, r))
-                moveDummyHpr.start()
-            elif(isDown(arrow_down)):
-                (h,p,r) = self.dummy.getHpr()
-                moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p+10, r))
-                moveDummyHpr.start()
-            if(isDown(w)):
-                (x,y,z) = self.dummy.getPos()
-                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x, y+10, z))
-                moveCam.start()
-            elif(isDown(s)):
-                (x,y,z) = self.dummy.getPos()
-                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x, y-10, z))
-                moveCam.start()
-            elif(isDown(a)):
-                (x,y,z) = self.dummy.getPos()
-                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x-10, y, z))
-                moveCam.start()
-            elif(isDown(d)):
-                (x,y,z) = self.dummy.getPos()
-                moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x+10, y, z))
-                moveCam.start()
-            elif(isDown(j)):
-                (x,y,z) = self.camera.getPos()
-                movePos = LerpPosInterval(self.camera, 0.25, LPoint3(0.8*x, 0.8*y, 0.8*z))
-                movePos.start()
-            elif(isDown(k)):
-                (x,y,z) = self.camera.getPos()
-                movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
-                movePos.start()
-            
+            if(isDown(space)):
+                Model.playingGame = True
+                Controller.toGameCamera(self)
+            elif(isDown(escape)):
+                Model.playingGame = False
+                Controller.toMenuCamera(self)
+            elif(Model.playingGame):
+                if(isDown(arrow_left)):
+                    (h,p,r) = self.dummy.getHpr()
+                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h-5, p, r))
+                    moveDummyHpr.start()
+                    print(self.dummy.getHpr())
+                elif(isDown(arrow_right)):
+                    (h,p,r) = self.dummy.getHpr()
+                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h+5, p, r))
+                    moveDummyHpr.start()
+                    print(self.dummy.getHpr())
+                elif(isDown(arrow_up)):
+                    (h,p,r) = self.dummy.getHpr()
+                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-5, r))
+                    moveDummyHpr.start()
+                elif(isDown(arrow_down)):
+                    (h,p,r) = self.dummy.getHpr()
+                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p+5, r))
+                    moveDummyHpr.start()
+                if(isDown(w)):
+                    (x,y,z) = self.dummy.getPos()
+                    h = self.dummy.getH()
+                    hpi = (h*math.pi) / 180
+                    moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x-10*math.sin(hpi), y+10*math.cos(hpi), z))
+                    moveCam.start()
+                elif(isDown(s)):
+                    (x,y,z) = self.dummy.getPos()
+                    h = self.dummy.getH()
+                    hpi = (h*math.pi) / 180
+                    moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x+10*math.sin(hpi), y-10*math.cos(hpi), z))
+                    moveCam.start()
+                elif(isDown(a)):
+                    (x,y,z) = self.dummy.getPos()
+                    h = self.dummy.getH()
+                    hpi = (h*math.pi) / 180
+                    moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x-10*math.cos(hpi), y-10*math.sin(hpi), z))
+                    moveCam.start()
+                elif(isDown(d)):
+                    (x,y,z) = self.dummy.getPos()
+                    h = self.dummy.getH()
+                    hpi = (h*math.pi) / 180
+                    moveCam = LerpPosInterval(self.dummy, 0.25, LPoint3(x+10*math.cos(hpi), y+10*math.sin(hpi), z))
+                    moveCam.start()
+                elif(isDown(j)):
+                    (x,y,z) = self.camera.getPos()
+                    movePos = LerpPosInterval(self.camera, 0.25, LPoint3(0.8*x, 0.8*y, 0.8*z))
+                    movePos.start()
+                elif(isDown(k)):
+                    (x,y,z) = self.camera.getPos()
+                    movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
+                    movePos.start()
+            print(self.dlnp.getHpr())
             return Task.cont
 
 
@@ -503,44 +446,22 @@ def runGame():
             if self.mouseWatcherNode.hasMouse():
                 # Collision detection logic form Panda3D chessboard demo
                 mpos = self.mouseWatcherNode.getMouse()
-
                 self.pickerRay.setFromLens(self.camNode, mpos.getX(), mpos.getY())
-
                 nearPoint = render.getRelativePoint(camera, self.pickerRay.getOrigin())
-    
                 nearVec = render.getRelativeVector(camera, self.pickerRay.getDirection())
                 self.empty.setPos(PointAtZ(.5, nearPoint, nearVec))
                 (x,y,z) = self.empty.getPos()
-                print(x,y,z)
                 Controller.selectAndMove(x,y, self)
         
         # Events for key presses
         def keyHandler(self,key):
-            if(key == 'f'):
-                self.dummy.setHpr(0,0,0)
-            elif(key == 'g'):
-                # Model.gameBoard.printBoard()
-                Controller.toDefaultRed(self)
-            elif(key == 'h'):
-                # Model.gameBoard.printBoard()
-                Controller.toDefaultBlack(self)
-            elif(key == "k"):
-                self.disableMouse()
-            elif(key == 'j'):
-                mat=Mat4(camera.getMat())
-                mat.invertInPlace()
-                base.mouseInterfaceNode.setMat(mat)
-                base.enableMouse()
-            elif(key == 'mouse1'):
+            if(key == 'mouse1'):
                 self.mousePressed()
-                pass
     
     # Contains all game data and important variables
     class Model(object):    
         
         gameBoard = Board()
-        margin = 50
-        boardRadius = 50
         middleRow = gameBoard.rows // 2 - 1
         middleCol = gameBoard.cols // 2 
         pieces = dict()
@@ -550,72 +471,142 @@ def runGame():
         selectedPiece = None
         selectedPosition = (-1,-1)
         currentPlayer = 'Red'
-        boardLines = None
-        boardBody = None
-        boardBase = None
-        showBase = None
+        boardLines, boardBody, boardBase, river = None, None, None, None
+        showBase, menum, palaceRed, palaceBlack = None, None, None, None
+        playingGame = False
 
     class Controller(object):
 
         @staticmethod
         def initGame(showBase):
+            showBase.disableMouse()
+            Controller.createMenu(showBase)
             Controller.createPieces(showBase)
             Controller.putPiecesInBoard(Model.gameBoard)
             Model.gameBoard.printBoard()
-            Controller.setStaticModelProperties(showBase)
+            Controller.createBoard(showBase)
             Controller.updatePieces(showBase)
             Controller.setModelShowBase(showBase)
-
+    
+        #Lighting for scene
         @staticmethod
-        def toDefaultBlack(showBase):
-            
+        def createLighting(showBase):
+            showBase.dlight = DirectionalLight('my dlight')
+            showBase.dlnp = render.attachNewNode(showBase.dlight)
+            showBase.dlnp.setHpr(0, 90, 0)
+            render.setLight(showBase.dlnp)
+
+        
+        #From  Panda3D Chessboard demo
+        @staticmethod
+        def createCollisionChecker(showBase):
+            #Create null object that inhabits click position
+            showBase.empty = showBase.loader.loadModel("models/cannon")
+            showBase.empty.setPos(0, 0 ,5)
+            showBase.empty.setScale(10, -10, 10)
+            #Object that detects collisions
+            showBase.picker = CollisionTraverser()  
+            #Holds all objects that are collided
+            showBase.pq = CollisionHandlerQueue()  
+            # Make a collision node for our picker ray (will be the thing colliding)
+            showBase.pickerNode = CollisionNode('mouseRay')
+            # Attach that node to the camera since the ray will need to be positioned
+            # relative to it
+            showBase.pickerNP = camera.attachNewNode(showBase.pickerNode)
+            # Everything to be picked will use bit 1. This way if we were doing other
+            # collision we could separate it
+            showBase.pickerNode.setFromCollideMask(BitMask32.bit(1))
+            showBase.pickerRay = CollisionRay()  # Make our ray
+            # Add it to the collision node
+            showBase.pickerNode.addSolid(showBase.pickerRay)
+            # Register the ray as something that can cause collisions
+            showBase.picker.addCollider(showBase.pickerNP, showBase.pq)
+        
+        @staticmethod
+        def toDefaultBlack(showBase):       
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
-            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
-            movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 250, 400), blendType = 'easeInOut')
-            moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -120, 180), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos, movePos, moveHpr)
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(180, 30, 0), blendType = 'easeInOut')
+            movePar = Parallel(moveDummyHpr, moveDummyPos)
             movePar.start()
 
-
         @staticmethod
-        def toDefaultRed(showBase):
-            
+        def toDefaultRed(showBase):       
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
-            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 0, 0), blendType = 'easeInOut')
-            movePos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, -250, 400), blendType = 'easeInOut')
-            moveHpr = LerpHprInterval(showBase.camera, 3.0, LVector3(0, -60, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos, movePos, moveHpr)
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 30, 0), blendType = 'easeInOut')
+            movePar = Parallel(moveDummyHpr, moveDummyPos)
             movePar.start()
 
-        #Default position for Red player
+        # Main menu camera position
         @staticmethod
-        def redDefaultCamera(showBase):
+        def setMenuCamera(showBase):       
+            showBase.dummy = render.attachNewNode('dummyNode')
+            showBase.camera.reparentTo(showBase.dummy)
+            showBase.camera.setPos(0, 0, 250)
+            showBase.camera.setHpr(0, -90, 0)
+            showBase.dummy.setHpr(-90, -180, 0)
+
+        # Main menu camera position
+        @staticmethod
+        def toMenuCamera(showBase):       
+            moveLightHpr = LerpHprInterval(showBase.dlnp, 3.0, LPoint3(0, 90, 0), blendType = 'easeInOut')
+            moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 250), blendType = 'easeInOut')
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(-90, -180, 0), blendType = 'easeInOut')
+            movePar = Parallel(moveDummyHpr, moveCamPos, moveLightHpr)
+            movePar.start()
+
+        #Initial game camera position, default position for Red player
+        @staticmethod
+        def toGameCamera(showBase):       
+            moveLightHpr = LerpHprInterval(showBase.dlnp, 3.0, LPoint3(0, -90, 0), blendType = 'easeInOut')
+            moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 400), blendType = 'easeInOut')
+            moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 30, 0), blendType = 'easeInOut')
+            movePar = Parallel(moveDummyHpr, moveCamPos, moveLightHpr)
+            movePar.start()
             
+            '''
             showBase.camera.setPos(0, -250, 400)
             showBase.camera.setHpr(0, -60, 0)
+            '''
         
         #Default position for Black player
         @staticmethod
         def blackDefaultCamera(showBase):
             #Camera default position
-            showBase.camera.setPos(0, 250, 400)
-            showBase.camera.setHpr(0, -120, 0)
+            # showBase.camera.setPos(0, 250, 400)
+            showBase.dummy.setHpr(180, 0, 0)
+            # showBase.camera.setHpr(0, -120, 0)
 
+        @staticmethod
+        def createMenu(showBase):
+            Model.menu = showBase.loader.loadModel("models/menu")
+            Model.menu.reparentTo(showBase.render)
+            Model.menu.setScale(100, 100, 100)
+
+        
         @staticmethod
         def setModelShowBase(showBase):
             Model.showBase = showBase
-
+        
         @staticmethod
-        def setStaticModelProperties(showBase):
+        def createBoard(showBase):
             Model.boardLines = showBase.loader.loadModel("models/boardLines")
             Model.boardBody = showBase.loader.loadModel("models/boardBody")
             Model.boardBase = showBase.loader.loadModel("models/boardBase")
+            Model.palaceRed = showBase.loader.loadModel("models/redpalace")
+            Model.palaceBlack = showBase.loader.loadModel("models/blackpalace")
+            Model.river = showBase.loader.loadModel("models/river")
+            Model.palaceRed.reparentTo(showBase.render)
+            Model.palaceBlack.reparentTo(showBase.render)
             Model.boardLines.reparentTo(showBase.render)
             Model.boardBody.reparentTo(showBase.render)
             Model.boardBase.reparentTo(showBase.render)
+            Model.river.reparentTo(showBase.render)
+            Model.palaceRed.setScale(100, 100, 100)
+            Model.palaceBlack.setScale(100, 100, 100)
             Model.boardLines.setScale(100, 100, 100)
             Model.boardBody.setScale(100, 100, 100)
             Model.boardBase.setScale(100, 100, 100)
+            Model.river.setScale(100, 100, 100)
 
         @staticmethod
         def updatePieces(showBase):
@@ -1142,4 +1133,39 @@ class View(object):
             for key in Model.pieces:
                 for piece in Model.pieces[key]:
                     piece.draw(canvas)
+'''
+
+
+
+       
+'''
+
+self.accept('arrow_left', self.keyHandler, ['arrow_left'])
+self.accept('arrow_right', self.keyHandler, ['arrow_right'])
+self.accept('arrow_up', self.keyHandler, ['arrow_up'])
+self.accept('arrow_down', self.keyHandler, ['arrow_down'])
+self.accept('f', self.keyHandler, ['f'])
+self.accept('k', self.keyHandler, ['k'])
+self.accept('j', self.keyHandler, ['j'])
+self.accept('h', self.keyHandler, ['h'])
+self.accept('g', self.keyHandler, ['g'])
+'''
+
+
+'''
+self.boardLines = self.loader.loadModel("models/boardLines")
+self.boardBody = self.loader.loadModel("models/boardBody")
+self.boardBase = self.loader.loadModel("models/boardBase")
+
+self.scene = self.loader.loadModel("models/environment")
+'''
+'''
+self.boardLines.reparentTo(self.render)
+self.boardBody.reparentTo(self.render)
+self.boardBase.reparentTo(self.render)
+
+self.boardLines.setScale(100, 100, 100)
+self.boardBody.setScale(100, 100, 100)
+self.boardBase.setScale(100, 100, 100)
+
 '''

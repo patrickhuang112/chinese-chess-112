@@ -1,0 +1,66 @@
+<CoordinateSystem> { Z-up } 
+<Material> Material.003 {
+  <Scalar> diffr { 0.640000 }
+  <Scalar> diffg { 0.640000 }
+  <Scalar> diffb { 0.640000 }
+  <Scalar> specr { 0.500000 }
+  <Scalar> specg { 0.500000 }
+  <Scalar> specb { 0.500000 }
+  <Scalar> shininess { 12.5 }
+  <Scalar> ambr { 1.000000 }
+  <Scalar> ambg { 1.000000 }
+  <Scalar> ambb { 1.000000 }
+  <Scalar> emitr { 0.000000 }
+  <Scalar> emitg { 0.000000 }
+  <Scalar> emitb { 0.000000 }
+}
+
+<Texture> Texture.011 {
+  "./tex/menu2_00000.png"
+  <Scalar> envtype { MODULATE }
+  <Scalar> minfilter { LINEAR_MIPMAP_LINEAR }
+  <Scalar> magfilter { LINEAR_MIPMAP_LINEAR }
+  <Scalar> wrap { REPEAT }
+}
+
+  <Group> Plane.003 {
+    <Transform> {
+      <Matrix4> {
+        4.371138828673793e-08 -1.0 1.279515686292143e-06 0.0 
+        -0.9100000262260437 -3.977736540150545e-08 0.0 0.0 
+        5.592940932434842e-14 -1.279515686292143e-06 -1.0 0.0 
+        -0.009999999776482582 0.029999999329447746 -0.033132292330265045 1.0 
+      }
+    }
+    
+    <VertexPool> Plane.003 {
+    
+      <Vertex> 0 {0.900000 1.030000 -0.033134
+        <UV>  {
+          0.000100 0.000100 
+        }
+      }
+      <Vertex> 1 {0.900000 -0.970000 -0.033131
+        <UV>  {
+          0.999900 0.000100 
+        }
+      }
+      <Vertex> 2 {-0.920000 -0.970000 -0.033131
+        <UV>  {
+          0.999900 0.999900 
+        }
+      }
+      <Vertex> 3 {-0.920000 1.030000 -0.033134
+        <UV>  {
+          0.000100 0.999900 
+        }
+      }}
+    
+    
+    <Polygon> {
+      <TRef> { Texture.011 }
+      <MRef> { Material.003 }
+      <Normal> {0.000000 -0.000001 -1.000000}
+      <VertexRef> { 0 1 2 3 <Ref> { Plane.003 }} 
+    }
+  }
