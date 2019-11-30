@@ -10,17 +10,9 @@ from direct.task.Task import Task
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import CollisionTraverser, CollisionNode
 from panda3d.core import CollisionHandlerQueue, CollisionRay
-from panda3d.core import DirectionalLight, PointLight, LightAttrib
-from panda3d.core import TextNode, Mat4
-from panda3d.core import LPoint3, LVector3, BitMask32
-from direct.directutil import Mopath
-from direct.interval.MopathInterval import *
-from direct.actor.Actor import Actor
-from direct.interval.LerpInterval import LerpPosInterval
-from direct.interval.IntervalGlobal import *
+from panda3d.core import LPoint3, LVector3, BitMask32, DirectionalLight, Mat4
 from panda3d.core import KeyboardButton
-
-
+from direct.interval.IntervalGlobal import *
 
 # Game Notes: BLACK IS THE TOP HALF, RED IS THE BOTTOM HALF (FOR 2D)
 
@@ -29,7 +21,6 @@ from panda3d.core import KeyboardButton
 # Bugs/Fixes:
     # Change all of the getLegalMoves in pieces to eliminate rows/cols
         # Basically implement piece.row and piece.col
-
 
 # Checklist
     # Flip board
@@ -45,7 +36,7 @@ def roundHalfUp(d):
     rounding = decimal.ROUND_HALF_UP
     return int(decimal.Decimal(d).to_integral_value(rounding=rounding))
 
-
+#Board Class attributes
 class Board(object):
     def __init__(self):
         self.x, self.y, self.z = 0,0,0
@@ -63,6 +54,7 @@ class Board(object):
     def printBoard(self):
         self.__repr__()
 
+#Piece Class
 class Piece(object):
     r = 20
     def __init__(self, x, y, color, model):
@@ -100,6 +92,7 @@ class Piece(object):
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):
         raise NotImplementedError 
 
+#King Class
 class King(Piece):
     def move(self):
         pass
@@ -128,6 +121,7 @@ class King(Piece):
                 col += dcol
         return legalMoves
 
+#Guard Class
 class Guard(Piece):
     def move(self):
         pass
@@ -153,6 +147,7 @@ class Guard(Piece):
                 col += dcol
         return legalMoves
 
+#Minister Class
 class Minister(Piece):
     def move(self):
         pass
@@ -193,7 +188,8 @@ class Minister(Piece):
                 row += 2*drow
                 col += 2*dcol
             return legalMoves
-                    
+
+#Rook Class                   
 class Rook(Piece):
     def move(self):
         pass
@@ -225,6 +221,7 @@ class Rook(Piece):
             else: break
         return legalMoves
 
+#knight Class
 class Knight(Piece):
     def move(self):
         pass
@@ -263,6 +260,7 @@ class Knight(Piece):
             col += dcol
         return legalMoves
 
+#Cannon Class
 class Cannon(Piece):
     def move(self):
         pass
@@ -281,7 +279,6 @@ class Cannon(Piece):
                     result.extend(self.getLegalMovesFromPoint(board,row,col,drow,dcol))
         return result
 
-    
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):
         legalMoves = []
         attacking = False
@@ -303,6 +300,7 @@ class Cannon(Piece):
             else: break
         return legalMoves
 
+#Pawn Class
 class Pawn(Piece):
     def __init__(self, x, y, color, model):
         super().__init__(x, y, color, model)
@@ -343,17 +341,18 @@ class Pawn(Piece):
                 col += dcol
         return legalMoves
 
-def runGame():
-    
+def runGame(): 
     # From Panda3D Chessboard demo
     def PointAtZ(z, point, vec):
         return point + vec * ((z - point.getZ()) / vec.getZ())
- 
-
+    
+    #3D Main App Class
     class MyApp(ShowBase):
     
         def __init__(self):
             ShowBase.__init__(self)
+            
+            #Initialize Game and World
             Controller.createLighting(self)
             Controller.initGame(self)
             Controller.createCollisionChecker(self)
@@ -361,10 +360,9 @@ def runGame():
 
             # Check for mouse and keys
             self.accept('mouse1', self.keyHandler, ['mouse1'])
-            self.accept('space', self.keyHandler, ['space'])
-            self.accept('escape', self.keyHandler, ['space'])
             self.taskMgr.add(self.checkKeys, "CheckKeysTask")
     
+        #Event handlers for keys
         def checkKeys (self, task):
             arrow_left = KeyboardButton.left()
             arrow_right = KeyboardButton.right()
@@ -380,10 +378,10 @@ def runGame():
             d = KeyboardButton.ascii_key('d')
 
             isDown = base.mouseWatcherNode.is_button_down
-            if(isDown(space)):
+            if((isDown(space)) and (Model.playingGame == False)):
                 Model.playingGame = True
                 Controller.toGameCamera(self)
-            elif(isDown(escape)):
+            elif((isDown(escape))):
                 Model.playingGame = False
                 Controller.toMenuCamera(self)
             elif(Model.playingGame):
@@ -391,12 +389,10 @@ def runGame():
                     (h,p,r) = self.dummy.getHpr()
                     moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h-5, p, r))
                     moveDummyHpr.start()
-                    print(self.dummy.getHpr())
                 elif(isDown(arrow_right)):
                     (h,p,r) = self.dummy.getHpr()
                     moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h+5, p, r))
                     moveDummyHpr.start()
-                    print(self.dummy.getHpr())
                 elif(isDown(arrow_up)):
                     (h,p,r) = self.dummy.getHpr()
                     moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-5, r))
@@ -437,9 +433,7 @@ def runGame():
                     (x,y,z) = self.camera.getPos()
                     movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
                     movePos.start()
-            print(self.dlnp.getHpr())
             return Task.cont
-
 
         # Event function for mouse click
         def mousePressed(self):
@@ -453,12 +447,12 @@ def runGame():
                 (x,y,z) = self.empty.getPos()
                 Controller.selectAndMove(x,y, self)
         
-        # Events for key presses
+        #Event handler for click
         def keyHandler(self,key):
             if(key == 'mouse1'):
                 self.mousePressed()
     
-    # Contains all game data and important variables
+    # Game data and 3D world important variables
     class Model(object):    
         
         gameBoard = Board()
@@ -467,14 +461,16 @@ def runGame():
         pieces = dict()
         pieces['Red'] = []
         pieces['Black'] = []
+        tempMoves = []
         width, height = 500, 600
-        selectedPiece = None
+        selectedPiece, selectedModel = None, None
         selectedPosition = (-1,-1)
         currentPlayer = 'Red'
         boardLines, boardBody, boardBase, river = None, None, None, None
         showBase, menum, palaceRed, palaceBlack = None, None, None, None
         playingGame = False
 
+    #Methods for game and 3D manipulation and logic
     class Controller(object):
 
         @staticmethod
@@ -491,7 +487,7 @@ def runGame():
         #Lighting for scene
         @staticmethod
         def createLighting(showBase):
-            showBase.dlight = DirectionalLight('my dlight')
+            showBase.dlight = DirectionalLight('DLight')
             showBase.dlnp = render.attachNewNode(showBase.dlight)
             showBase.dlnp.setHpr(0, 90, 0)
             render.setLight(showBase.dlnp)
@@ -501,7 +497,7 @@ def runGame():
         @staticmethod
         def createCollisionChecker(showBase):
             #Create null object that inhabits click position
-            showBase.empty = showBase.loader.loadModel("models/cannon")
+            showBase.empty = showBase.loader.loadModel("models/redcannon")
             showBase.empty.setPos(0, 0 ,5)
             showBase.empty.setScale(10, -10, 10)
             #Object that detects collisions
@@ -524,16 +520,18 @@ def runGame():
         
         @staticmethod
         def toDefaultBlack(showBase):       
+            moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 400), blendType = 'easeInOut')
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(180, 30, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos)
+            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos)
             movePar.start()
 
         @staticmethod
         def toDefaultRed(showBase):       
+            moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 400), blendType = 'easeInOut')
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 30, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos)
+            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos)
             movePar.start()
 
         # Main menu camera position
@@ -562,19 +560,12 @@ def runGame():
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 30, 0), blendType = 'easeInOut')
             movePar = Parallel(moveDummyHpr, moveCamPos, moveLightHpr)
             movePar.start()
-            
-            '''
-            showBase.camera.setPos(0, -250, 400)
-            showBase.camera.setHpr(0, -60, 0)
-            '''
         
         #Default position for Black player
         @staticmethod
         def blackDefaultCamera(showBase):
             #Camera default position
-            # showBase.camera.setPos(0, 250, 400)
             showBase.dummy.setHpr(180, 0, 0)
-            # showBase.camera.setHpr(0, -120, 0)
 
         @staticmethod
         def createMenu(showBase):
@@ -616,7 +607,7 @@ def runGame():
                     piece.model.setScale(9, -9, 9)
                     if(piece.color == 'Black'):
                         piece.model.setHpr(-180, 0, 0)
-                    piece.model.setPos(piece.x, piece.y, 3)
+                    piece.model.setPos(piece.x, piece.y, 5)
 
         @staticmethod
         def createPawns(board, showBase):
@@ -754,7 +745,6 @@ def runGame():
             removedPiece = Model.pieces[color].pop(index)
             (x,y,z) = removedPiece.model.getPos()
             removedPiece.model.setPos(x,y,z-10)
-            print('Removed Piece: ', removedPiece)
             return removedPiece
 
         @staticmethod
@@ -786,6 +776,8 @@ def runGame():
                 if(removedPiece != None):
                     Controller.revertReplacedPiece(Model.gameBoard, row, col, removedPiece)
                 return False
+            if(removedPiece != None):
+                removedPiece.model.removeNode()
             return True
 
 
@@ -873,12 +865,6 @@ def runGame():
                     board.pieces[newRow][newCol] = None
                 board.pieces[row][col] = piece
             return changedMoves
-                    
-
-        @staticmethod
-        def updatePieceCoords(piece, row, col):
-            (x,y) = Controller.getIntersectionCoords(row, col)
-            (piece.x, piece.y) = (x,y)
 
         @staticmethod
         def isInCheck(board, kingPiece):
@@ -895,53 +881,100 @@ def runGame():
                     if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
                         return True
                 return False
+        @staticmethod
+        def highlightLegalMoves(board, moves, showBase):
+            for (row, col) in moves:
+                (x, y) = Controller.getIntersectionCoords(board, row, col)
+                temp = showBase.loader.loadModel('models/possiblemove')
+                Model.tempMoves.append(temp)
+                temp.reparentTo(showBase.render)
+                temp.setScale(9, -9, 9)
+                temp.setPos(x, y, 6)
         
         @staticmethod
+        def removeHighlightedMoves():
+            for piece in Model.tempMoves:
+                piece.removeNode()
+
+        @staticmethod
+        def selectPieceModel(showBase):
+            if(isinstance(Model.selectedPiece, Pawn)):
+                if(Model.selectedPiece.color == 'Red'):
+                    Model.selectedModel = showBase.loader.loadModel('models/redpawnselect')
+                else: Model.selectedModel = showBase.loader.loadModel('models/blackpawnselect')
+            elif(isinstance(Model.selectedPiece, Rook)):
+                Model.selectedModel = showBase.loader.loadModel('models/rookselect')
+            elif(isinstance(Model.selectedPiece, Knight)):
+                Model.selectedModel = showBase.loader.loadModel('models/knightselect')
+            elif(isinstance(Model.selectedPiece, Minister)):
+                if(Model.selectedPiece.color == 'Red'):
+                    Model.selectedModel = showBase.loader.loadModel('models/redministerselect')
+                else: Model.selectedModel = showBase.loader.loadModel('models/blackministerselect')
+            elif(isinstance(Model.selectedPiece, Guard)):
+                if(Model.selectedPiece.color == 'Red'):
+                    Model.selectedModel = showBase.loader.loadModel('models/redguardselect')
+                else: Model.selectedModel = showBase.loader.loadModel('models/blackguardselect')
+            elif(isinstance(Model.selectedPiece, Cannon)):
+                if(Model.selectedPiece.color == 'Red'):
+                    Model.selectedModel = showBase.loader.loadModel('models/redcannonselect')
+                else: Model.selectedModel = showBase.loader.loadModel('models/blackcannonselect')
+            elif(isinstance(Model.selectedPiece, King)): 
+                if(Model.selectedPiece.color == 'Red'): 
+                    Model.selectedModel = showBase.loader.loadModel('models/redkingselect')
+                else: Model.selectedModel = showBase.loader.loadModel('models/blackkingselect')
+            
+            Model.selectedModel.reparentTo(showBase.render)
+            Model.selectedModel.setScale(9, -9, 9)
+            if(Model.selectedPiece.color == 'Black'):
+                Model.selectedModel.setHpr(180, 0, 0)    
+            Model.selectedModel.setPos(Model.selectedPiece.x, Model.selectedPiece.y, 6)
+            
+        @staticmethod
+        def deselectPieceModel(showBase):
+            Model.selectedModel.removeNode()
+            Model.selectedModel = None
+
+        @staticmethod
         def selectAndMove(x,y, showBase):
-            print('here')
             #Only if click in board
             if(Controller.isNearBoard(x, y)):
-                print('checking!')
                 (row,col) = Controller.getIntersection(Model.gameBoard, x, y)
                 (oldRow, oldCol) = Model.selectedPosition
-                print(row, col)
                 # Select a piece if none selected
                 if((Model.selectedPiece == None) and 
                    (Model.gameBoard.pieces[row][col] != None)):
-                    print('Here!')
-                    print(Model.gameBoard.pieces[row][col].color)
                     if(Model.currentPlayer == Model.gameBoard.pieces[row][col].color):
                         Model.selectedPiece = Controller.selectPiece(Model.gameBoard, row, col)
+                        Controller.selectPieceModel(showBase)
                         legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, row, col)
-                        print('Legal Moves: ', legalMoves)
                         refinedMoves = Controller.refineLegalMoves(Model.gameBoard, row, col, Model.selectedPiece, legalMoves)
-                        print('Selected piece: ', Model.selectedPiece)
-                        print('Legal Moves: ', refinedMoves)
+                        Controller.highlightLegalMoves(Model.gameBoard, refinedMoves, showBase)
                 
                 #Piece is selected already
                 elif(Model.selectedPiece != None):
                     legalMoves = Model.selectedPiece.getLegalMoves(Model.gameBoard, oldRow, oldCol)
                     refinedMoves = Controller.refineLegalMoves(Model.gameBoard, oldRow, oldCol, Model.selectedPiece, legalMoves)
-                    
                     # User click on selected piece, deselects it
                     if(Model.selectedPiece == Model.gameBoard.pieces[row][col]):
+                        Controller.deselectPieceModel(showBase)
+                        Controller.removeHighlightedMoves()
                         Model.selectedPiece = None
                         Model.selectedPosition = (-1,-1)
-                        print('Deselected Piece!')
 
                     # User clicks on valid move area
                     elif((Model.selectedPiece != Model.gameBoard.pieces[row][col]) and 
                         ((row, col) in refinedMoves)):
                         success = Controller.placePiece(Model.gameBoard, oldRow, oldCol, row, col)
                         if(success):    
+                            Controller.deselectPieceModel(showBase)
+                            Controller.removeHighlightedMoves()
                             Model.selectedPiece.moveCount += 1
                             Model.selectedPiece = None
                             Model.selectedPosition = (-1,-1)
+
                             Controller.switchPlayer(showBase)
-                            print('Moved piece!')
             
             Controller.updatePieces(showBase)
-            print('updated!')
             #Check if GameOver (checkmate)
             Controller.checkGameOver(Model.gameBoard)
 
