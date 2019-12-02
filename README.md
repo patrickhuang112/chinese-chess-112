@@ -1,8 +1,10 @@
 # Chinese-Chess-112
 
 Created by: Patrick Huang
+
 Andrew ID: pbhuang
-Fall-2019, 15-112 Final Term Project
+
+Fall-2019
 
 Final Term Project for: https://www.cs.cmu.edu/~112/
 
