@@ -16,8 +16,6 @@ from direct.interval.IntervalGlobal import *
 
 # Game Notes: BLACK IS THE TOP HALF, RED IS THE BOTTOM HALF (FOR 2D)
 
-# Elan: suggested camera rotation for each term over.
-
 # Bugs/Fixes:
     # Change all of the getLegalMoves in pieces to eliminate rows/cols
         # Basically implement piece.row and piece.col
@@ -26,7 +24,6 @@ from direct.interval.IntervalGlobal import *
     # Flip board
     # In Check (into game loop)
     # Checkmate / EndGame (into game loop)
-
 
 # From https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 def roundHalfUp(d):
@@ -94,8 +91,9 @@ class Piece(object):
 
 #King Class
 class King(Piece):
-    def move(self):
-        pass
+    def __init__(self, x, y, color, model):
+        super().__init__(x, y, color, model)
+        self.inCheck = False
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '將', fill = 'white')
@@ -123,8 +121,6 @@ class King(Piece):
 
 #Guard Class
 class Guard(Piece):
-    def move(self):
-        pass
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '士', fill = 'white')
@@ -149,8 +145,6 @@ class Guard(Piece):
 
 #Minister Class
 class Minister(Piece):
-    def move(self):
-        pass
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '象', fill = 'white')
@@ -191,14 +185,11 @@ class Minister(Piece):
 
 #Rook Class                   
 class Rook(Piece):
-    def move(self):
-        pass
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '車', fill = 'white')
     def __repr__(self):
         return 'Rook'
-
     def getLegalMoves(self, board, row, col):
         result = []
         for drow in [-1, 0, +1]:
@@ -207,30 +198,32 @@ class Rook(Piece):
                    ((dcol != 0) and (drow == 0))):
                     result.extend(self.getLegalMovesFromPoint(board,row,col,drow,dcol))
         return result
-
-    
+  
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):
         legalMoves = []
+        finishedAttacking = False
         while(  (0 <= row + drow < board.rows) and 
-                (0 <= col + dcol < board.cols)):
-            if( (board.pieces[row+drow][col+dcol] == None) or 
-                (board.pieces[row+drow][col+dcol].color != self.color)):        
+                (0 <= col + dcol < board.cols) and 
+                (not finishedAttacking)):
+            if(board.pieces[row+drow][col+dcol] == None):        
                 legalMoves.append((row + drow, col + dcol))
                 row += drow
                 col += dcol
+            elif(board.pieces[row+drow][col+dcol].color != self.color):
+                legalMoves.append((row + drow, col + dcol))
+                row += drow
+                col += dcol
+                finishedAttacking = True
             else: break
         return legalMoves
 
 #knight Class
 class Knight(Piece):
-    def move(self):
-        pass
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '馬', fill = 'white')
     def __repr__(self):
         return 'Knight'
-
     def pieceIsInWay(self, board, row, col, drow, dcol):
         if(abs(drow) == 2):
             drow = -1 if (drow < 0) else +1
@@ -262,8 +255,6 @@ class Knight(Piece):
 
 #Cannon Class
 class Cannon(Piece):
-    def move(self):
-        pass
     def draw(self, canvas):
         super().draw(canvas)
         canvas.create_text(self.x, self.y, text = '炮', fill = 'white')
@@ -282,15 +273,17 @@ class Cannon(Piece):
     def getLegalMovesFromPoint(self, board, row, col, drow, dcol):
         legalMoves = []
         attacking = False
+        finishedAttacking = False
         while((0 <= row + drow < board.rows) and (0 <= col + dcol < board.cols)):
             if((not attacking) and (board.pieces[row+drow][col+dcol] != None)):
                 attacking = True
                 row += drow
                 col += dcol
-            elif(attacking):
+            elif(attacking and (not finishedAttacking)):
                 if( (board.pieces[row+drow][col+dcol] != None) and 
                     (board.pieces[row+drow][col+dcol].color != self.color)):
                     legalMoves.append((row + drow, col + dcol))
+                    break
                 row += drow
                 col += dcol   
             elif(board.pieces[row+drow][col+dcol] == None):        
@@ -348,7 +341,6 @@ def runGame():
     
     #3D Main App Class
     class MyApp(ShowBase):
-    
         def __init__(self):
             ShowBase.__init__(self)
             
@@ -360,6 +352,8 @@ def runGame():
 
             # Check for mouse and keys
             self.accept('mouse1', self.keyHandler, ['mouse1'])
+            self.accept('arrow_left', self.keyHandler, ['arrow_left'])
+            self.accept('arrow_right', self.keyHandler, ['arrow_right'])
             self.taskMgr.add(self.checkKeys, "CheckKeysTask")
     
         #Event handlers for keys
@@ -370,6 +364,7 @@ def runGame():
             arrow_down = KeyboardButton.down()
             space = KeyboardButton.space()
             escape = KeyboardButton.escape()
+            g = KeyboardButton.ascii_key('g')
             j = KeyboardButton.ascii_key('j')
             k = KeyboardButton.ascii_key('k')
             w = KeyboardButton.ascii_key('w')
@@ -378,11 +373,16 @@ def runGame():
             d = KeyboardButton.ascii_key('d')
 
             isDown = base.mouseWatcherNode.is_button_down
-            if((isDown(space)) and (Model.playingGame == False)):
+            if((isDown(space)) and (not Model.playingGame) and (not Model.inInstructions)):
                 Model.playingGame = True
                 Controller.toGameCamera(self)
-            elif((isDown(escape))):
+            elif((isDown(g)) and (not Model.playingGame)):
+                Model.inInstructions = True
+                Controller.toInstructionsCamera(self)
+            elif(isDown(escape)):
                 Model.playingGame = False
+                Model.inInstructions = False
+                Model.slideIndex = 0
                 Controller.toMenuCamera(self)
             elif(Model.playingGame):
                 if(isDown(arrow_left)):
@@ -449,7 +449,20 @@ def runGame():
         
         #Event handler for click
         def keyHandler(self,key):
-            if(key == 'mouse1'):
+            if(Model.inInstructions):
+                if(key == 'arrow_left'):
+                    if(Model.slideIndex != 0):
+                        (x,y,z) = self.dummy.getPos()
+                        moveDummyPos = LerpPosInterval(self.dummy, 1.0, LPoint3(x, y+360, z), blendType = 'easeInOut')
+                        moveDummyPos.start()
+                        Model.slideIndex -= 1
+                elif(key == 'arrow_right'):
+                    if(Model.slideIndex != 3): 
+                        (x,y,z) = self.dummy.getPos()
+                        moveDummyPos = LerpPosInterval(self.dummy, 1.0, LPoint3(x, y-360, z), blendType = 'easeInOut')
+                        moveDummyPos.start()
+                        Model.slideIndex += 1
+            elif(key == 'mouse1'):
                 self.mousePressed()
     
     # Game data and 3D world important variables
@@ -462,13 +475,15 @@ def runGame():
         pieces['Red'] = []
         pieces['Black'] = []
         tempMoves = []
+        instructions = []
+        slideIndex = 0
         width, height = 500, 600
-        selectedPiece, selectedModel = None, None
+        kingInCheck, selectedPiece, selectedModel = None, None, None
         selectedPosition = (-1,-1)
         currentPlayer = 'Red'
         boardLines, boardBody, boardBase, river = None, None, None, None
         showBase, menum, palaceRed, palaceBlack = None, None, None, None
-        playingGame = False
+        playingGame, inInstructions = False, False
 
     #Methods for game and 3D manipulation and logic
     class Controller(object):
@@ -477,6 +492,7 @@ def runGame():
         def initGame(showBase):
             showBase.disableMouse()
             Controller.createMenu(showBase)
+            Controller.createInstructions(showBase)
             Controller.createPieces(showBase)
             Controller.putPiecesInBoard(Model.gameBoard)
             Model.gameBoard.printBoard()
@@ -492,7 +508,6 @@ def runGame():
             showBase.dlnp.setHpr(0, 90, 0)
             render.setLight(showBase.dlnp)
 
-        
         #From  Panda3D Chessboard demo
         @staticmethod
         def createCollisionChecker(showBase):
@@ -548,8 +563,9 @@ def runGame():
         def toMenuCamera(showBase):       
             moveLightHpr = LerpHprInterval(showBase.dlnp, 3.0, LPoint3(0, 90, 0), blendType = 'easeInOut')
             moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 250), blendType = 'easeInOut')
+            moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(-90, -180, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveCamPos, moveLightHpr)
+            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos, moveLightHpr)
             movePar.start()
 
         #Initial game camera position, default position for Red player
@@ -567,6 +583,23 @@ def runGame():
             #Camera default position
             showBase.dummy.setHpr(180, 0, 0)
 
+        @staticmethod
+        def createInstructions(showBase):
+            instruct1 = showBase.loader.loadModel("models/instruct1")
+            instruct2 = showBase.loader.loadModel("models/instruct2")
+            instruct3 = showBase.loader.loadModel("models/instruct3")
+            instruct4 = showBase.loader.loadModel("models/instruct4")
+            Model.instructions.extend([instruct1, instruct2, instruct3, instruct4])
+            for slide in Model.instructions:
+                slide.reparentTo(showBase.render)
+                slide.setScale(100, 100, 100)
+
+        @staticmethod
+        def toInstructionsCamera(showBase):
+            moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(325, 0, 310), blendType = 'easeInOut')
+            movePar = Parallel(moveDummyPos)
+            movePar.start()
+        
         @staticmethod
         def createMenu(showBase):
             Model.menu = showBase.loader.loadModel("models/menu")
@@ -620,7 +653,6 @@ def runGame():
                 Model.pieces['Black'].append(Pawn(bx, by, 'Black', pawnModelBlack))
                 Model.pieces['Red'].append(Pawn(rx, ry, 'Red', pawnModelRed))
     
-
         @staticmethod
         def createDoubles(board, pieceType, showBase):
             
@@ -780,7 +812,6 @@ def runGame():
                 removedPiece.model.removeNode()
             return True
 
-
         @staticmethod
         def switchPlayer(showBase):
             if(Model.currentPlayer == 'Red'):
@@ -790,7 +821,6 @@ def runGame():
                 Model.currentPlayer = 'Red'    
                 Controller.toDefaultRed(showBase)
                     
-
         @staticmethod
         def findKings(board):
             foundRedKing = False
@@ -845,6 +875,10 @@ def runGame():
         @staticmethod
         def refineLegalMoves(board, row, col, piece, moves):
             changedMoves = copy.deepcopy(moves)
+            if(piece.color == 'Red'):
+                (kingRow, kingCol, notNeeded1, notNeeded2) = Controller.findKings(board)
+            else:
+                (notNeeded1, notNeeded2, kingRow, kingCol) = Controller.findKings(board)
             for (newRow, newCol) in moves:
                 #Temp changes
                 removedPiece = None
@@ -856,36 +890,38 @@ def runGame():
                 # Check if valid
                 if(Controller.kingsFacing(Model.gameBoard)):
                     changedMoves.remove((newRow, newCol))
-            
+                elif(Controller.isInCheck(board, kingRow, kingCol, piece.color)):
+                    changedMoves.remove((newRow, newCol))
+
                 # Revert temp changes
                 if(removedPiece != None):
                     board.pieces[newRow][newCol] = removedPiece
                 else: 
-
                     board.pieces[newRow][newCol] = None
                 board.pieces[row][col] = piece
             return changedMoves
 
         @staticmethod
-        def isInCheck(board, kingPiece):
-            (kingRow, kingCol) = Controller.getIntersection(Model.gameBoard, kingPiece.x, kingPiece.y)
-            if kingPiece.color == 'Red':
+        def isInCheck(board, kingRow, kingCol, color):
+            if color == 'Red':
                 for piece in Model.pieces['Black']:
-                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
-                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
+                    (row, col) = Controller.getIntersection(board, piece.x, piece.y)
+                    if((kingRow, kingCol) in piece.getLegalMoves(board, row, col)):
                         return True
                 return False
             else:
                 for piece in Model.pieces['Red']:
-                    (row, col) = Controller.getIntersection(Model.gameBoard, piece.x, piece.y)
-                    if((kingRow, kingCol) in piece.getLegalMoves(Model.gameBoard, row, col)):
+                    (row, col) = Controller.getIntersection(board, piece.x, piece.y)
+                    if((kingRow, kingCol) in piece.getLegalMoves(board, row, col)):
                         return True
                 return False
         @staticmethod
         def highlightLegalMoves(board, moves, showBase):
             for (row, col) in moves:
                 (x, y) = Controller.getIntersectionCoords(board, row, col)
-                temp = showBase.loader.loadModel('models/possiblemove')
+                if(board.pieces[row][col] != None): 
+                    temp = showBase.loader.loadModel('models/takeable')
+                else: temp = showBase.loader.loadModel('models/possiblemove')
                 Model.tempMoves.append(temp)
                 temp.reparentTo(showBase.render)
                 temp.setScale(9, -9, 9)
@@ -895,6 +931,30 @@ def runGame():
         def removeHighlightedMoves():
             for piece in Model.tempMoves:
                 piece.removeNode()
+
+        @staticmethod
+        def removeInCheckModels():
+            if(Model.kingInCheck != None): Model.kingInCheck.removeNode()
+
+        @staticmethod
+        def updateInCheckModels(board, showBase):
+            (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
+            if(Controller.isInCheck(board, rkRow, rkCol, 'Red')):
+                kingPiece = board.pieces[rkRow][rkCol]
+                Model.kingInCheck = showBase.loader.loadModel('models/redkingincheck')
+                Model.kingInCheck.reparentTo(showBase.render)
+                Model.kingInCheck.setScale(9, -9, 9)
+                (x,y) = (kingPiece.x, kingPiece.y)
+                Model.kingInCheck.setPos(x, y, 6)
+            elif(Controller.isInCheck(board, bkRow, bkCol, 'Black')):
+                kingPiece = board.pieces[bkRow][bkCol]
+                Model.kingInCheck = showBase.loader.loadModel('models/blackkingincheck')
+                Model.kingInCheck.reparentTo(showBase.render)
+                Model.kingInCheck.setScale(9, -9, 9)
+                (x,y) = (kingPiece.x, kingPiece.y)
+                Model.kingInCheck.setPos(x, y, 6)
+                Model.kingInCheck.setHpr(180, 0, 0)  
+
 
         @staticmethod
         def selectPieceModel(showBase):
@@ -971,11 +1031,12 @@ def runGame():
                             Model.selectedPiece.moveCount += 1
                             Model.selectedPiece = None
                             Model.selectedPosition = (-1,-1)
-
                             Controller.switchPlayer(showBase)
             
             Controller.updatePieces(showBase)
-            #Check if GameOver (checkmate)
+            # Check if GameOver (checkmate)
+            Controller.removeInCheckModels()
+            Controller.updateInCheckModels(Model.gameBoard, showBase)
             Controller.checkGameOver(Model.gameBoard)
 
     app = MyApp()
