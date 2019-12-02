@@ -47,4 +47,5 @@ Game Rules:
 		-Red goes first
 
 All code and project files on: https://github.com/patrickhuang112/chinese-chess-11
+
 Have fun playing!	
