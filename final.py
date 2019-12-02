@@ -26,6 +26,7 @@ from direct.interval.IntervalGlobal import *
     # Checkmate / EndGame (into game loop)
 
 # From https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
+
 def roundHalfUp(d):
     # Round to nearest with ties going away from zero.
     # You do not need to understand how this function works.
