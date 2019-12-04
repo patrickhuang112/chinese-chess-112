@@ -15,7 +15,9 @@ External Software used: Adobe After Effects, Blender 2.70, Blender YABEE Exporte
 External Code used:
 
 	-Used code from Panda3D Chessboard demo: code relating to 3D clicking and selecting (creating collision rays and traversers)
+		-https://github.com/kralf/panda3d/blob/master/python/bin/samples/chessboard.py
 	-Used code from 112 course (roundHalfUp)
+		-https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 
 Notes:
 
@@ -32,6 +34,9 @@ Notes:
 	-Dark Blue circles indicate "legal" moves for a selected piece
 	-Orange circles indicate a legal move that involves taking an enemy piece
 	-Pink-Purple circles indicate a king piece is in check
+	-White circles indicate the king is checkmated and the game is over
+		-Click escape key to go back to the main menu and reset the game.
+		-Click space key to play another reset game
 
 Game Rules:
 

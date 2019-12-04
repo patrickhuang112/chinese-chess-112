@@ -370,12 +370,21 @@ def runGame():
             isDown = base.mouseWatcherNode.is_button_down
 
             # Space: Go to game (based on current player)
-            if((isDown(space)) and ((not Model.playingGame) or (Model.inInstructions))):
-                Model.playingGame = True
-                if(Model.currentPlayer == 'Red'):
+            if(isDown(space)): 
+                # Resets game if checkmate
+                if(Model.gameOver):
+                    Model.gameOver = False
+                    Model.kingInCheck.removeNode()
+                    Model.kingCheckmated.removeNode()
+                    Controller.initGame(self)
                     Controller.toDefaultRed(self)
-                else:
-                    Controller.toDefaultBlack(self)
+                # From main menu or instructions
+                elif((not Model.playingGame) or (Model.inInstructions)):
+                    Model.playingGame = True
+                    if(Model.currentPlayer == 'Red'):
+                        Controller.toDefaultRed(self)   
+                    else:
+                        Controller.toDefaultBlack(self)
 
             # g: Go to instructions 
             elif(isDown(g)):
