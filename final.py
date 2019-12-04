@@ -373,7 +373,10 @@ def runGame():
             isDown = base.mouseWatcherNode.is_button_down
             if((isDown(space)) and (not Model.playingGame) and (not Model.inInstructions)):
                 Model.playingGame = True
-                Controller.toGameCamera(self)
+                if(Model.currentPlayer == 'Red'):
+                    Controller.toDefaultRed(self)
+                else:
+                    Controller.toDefaultBlack(self)
             elif((isDown(g)) and (not Model.playingGame)):
                 Model.inInstructions = True
                 Controller.toInstructionsCamera(self)
@@ -382,6 +385,11 @@ def runGame():
                 Model.inInstructions = False
                 Model.slideIndex = 0
                 Controller.toMenuCamera(self)
+                if(Model.gameOver):
+                    Model.gameOver = False
+                    Model.kingInCheck.removeNode()
+                    Model.kingCheckmated.removeNode()
+                    Controller.initGame(self)
             elif(Model.playingGame):
                 if(isDown(arrow_left)):
                     (h,p,r) = self.dummy.getHpr()
@@ -486,11 +494,50 @@ def runGame():
         currentPlayer = 'Red'
         redKingCheckModel, blackKingCheckModel = None, None
         boardLines, boardBody, boardBase, river = None, None, None, None
-        showBase, menum, palaceRed, palaceBlack = None, None, None, None
-        playingGame, inInstructions = False, False
+        showBase, menu, palaceRed, palaceBlack = None, None, None, None
+        gameOver, playingGame, inInstructions = False, False, False
 
     #Methods for game and 3D manipulation and logic
     class Controller(object):
+        
+        @staticmethod
+        def initGame(showBase):
+            showBase.disableMouse()
+            Controller.initUnusedModels(showBase)
+            Controller.clearBoardAndPieces()
+            Controller.createMenu(showBase)
+            Controller.createInstructions(showBase)
+            Controller.createPieces(showBase)
+            Controller.putPiecesInBoard(Model.gameBoard)
+            Model.gameBoard.printBoard()
+            Controller.createBoard(showBase)
+            Controller.updatePieces(showBase)
+            Controller.setModelShowBase(showBase)
+            
+        @staticmethod
+        def clearBoardAndPieces():
+            # Visually clear models
+            for piece in Model.pieces['Red']:
+                piece.model.removeNode()
+                
+            for piece in Model.pieces['Black']:
+                piece.model.removeNode()
+
+            # Reset game values
+            Model.gameBoard = Board()
+            Model.middleRow = Model.gameBoard.rows // 2 - 1
+            Model.middleCol = Model.gameBoard.cols // 2 
+            Model.pieces = dict()
+            Model.pieces['Red'] = []
+            Model.pieces['Black'] = []
+            Model.tempMoves = []
+            Model.instructions = []
+            Model.slideIndex = 0
+            Model.selectedPiece, Model.selectedModel = None, None
+            Model.kingCheckmated, Model.kingInCheck = None, None
+            Model.selectedPosition = (-1,-1)
+            Model.currentPlayer = 'Red'
+            Model.gameOver, Model.playingGame, Model.inInstructions = False, False, False
         
         @staticmethod
         def initUnusedModels(showBase):
@@ -511,23 +558,6 @@ def runGame():
             Model.rKingSel = showBase.loader.loadModel('models/redkingselect')
             Model.bKingSel = showBase.loader.loadModel('models/blackkingselect')
 
-
-
-
-        @staticmethod
-        def initGame(showBase):
-            showBase.disableMouse()
-            Controller.initUnusedModels(showBase)
-            Controller.createMenu(showBase)
-            Controller.createInstructions(showBase)
-            Controller.createPieces(showBase)
-            Controller.putPiecesInBoard(Model.gameBoard)
-            Model.gameBoard.printBoard()
-            Controller.createBoard(showBase)
-            Controller.updatePieces(showBase)
-            Controller.setModelShowBase(showBase)
-            
-    
         #Lighting for scene
         @staticmethod
         def createLighting(showBase):
@@ -562,19 +592,23 @@ def runGame():
             showBase.picker.addCollider(showBase.pickerNP, showBase.pq)
         
         @staticmethod
-        def toDefaultBlack(showBase):       
+        def toDefaultBlack(showBase):  
+
+            moveLightHpr = LerpHprInterval(showBase.dlnp, 3.0, LPoint3(0, -90, 0), blendType = 'easeInOut') 
             moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 400), blendType = 'easeInOut')
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(180, 30, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos)
+            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos, moveLightHpr)
             movePar.start()
 
         @staticmethod
-        def toDefaultRed(showBase):       
+        def toDefaultRed(showBase):    
+
+            moveLightHpr = LerpHprInterval(showBase.dlnp, 3.0, LPoint3(0, -90, 0), blendType = 'easeInOut')
             moveCamPos = LerpPosInterval(showBase.camera, 3.0, LPoint3(0, 0, 400), blendType = 'easeInOut')
             moveDummyPos = LerpPosInterval(showBase.dummy, 3.0, LPoint3(0, 0, 0), blendType = 'easeInOut')
             moveDummyHpr = LerpHprInterval(showBase.dummy, 3.0, LVector3(0, 30, 0), blendType = 'easeInOut')
-            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos)
+            movePar = Parallel(moveDummyHpr, moveDummyPos, moveCamPos, moveLightHpr)
             movePar.start()
 
         # Main menu camera position
@@ -914,9 +948,8 @@ def runGame():
                     Model.kingCheckmated.setPos(x, y, 7)
                     Model.kingCheckmated.setHpr(180, 0, 0)
 
+                Model.gameOver = True
 
-                print('GameOver CHECKMATE!')
-                pass
                     
 
         @staticmethod
