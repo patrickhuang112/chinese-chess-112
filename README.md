@@ -53,6 +53,6 @@ Game Rules:
 		-Kings Facing: The two kings can never "see" each other. They cannot be in the same column without a piece in between
 		-Red goes first
 
-All code and project files on: https://github.com/patrickhuang112/chinese-chess-11
+All code and project files on: https://github.com/patrickhuang112/chinese-chess-112
 
 Have fun playing!	
