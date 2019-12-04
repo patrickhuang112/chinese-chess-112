@@ -401,12 +401,14 @@ def runGame():
                     moveDummyHpr.start()
                 elif(isDown(arrow_up)):
                     (h,p,r) = self.dummy.getHpr()
-                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-5, r))
-                    moveDummyHpr.start()
+                    if(p - 5 > -75):
+                        moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p-5, r))
+                        moveDummyHpr.start()
                 elif(isDown(arrow_down)):
                     (h,p,r) = self.dummy.getHpr()
-                    moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p+5, r))
-                    moveDummyHpr.start()
+                    if(p + 5 < 75):
+                        moveDummyHpr = LerpHprInterval(self.dummy, 0.25, LVector3(h, p+5, r))
+                        moveDummyHpr.start()
                 if(isDown(w)):
                     (x,y,z) = self.dummy.getPos()
                     h = self.dummy.getH()
@@ -433,12 +435,14 @@ def runGame():
                     moveCam.start()
                 elif(isDown(j)):
                     (x,y,z) = self.camera.getPos()
-                    movePos = LerpPosInterval(self.camera, 0.25, LPoint3(0.8*x, 0.8*y, 0.8*z))
-                    movePos.start()
+                    if(0.8 * z > 100):
+                        movePos = LerpPosInterval(self.camera, 0.25, LPoint3(0.8*x, 0.8*y, 0.8*z))
+                        movePos.start()
                 elif(isDown(k)):
                     (x,y,z) = self.camera.getPos()
-                    movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
-                    movePos.start()
+                    if(1.25 * z < 700):
+                        movePos = LerpPosInterval(self.camera, 0.25, LPoint3(1.25*x, 1.25*y, 1.25*z))
+                        movePos.start()
             return Task.cont
 
         # Event function for mouse click
