@@ -21,9 +21,8 @@ from direct.interval.IntervalGlobal import *
         # Basically implement piece.row and piece.col
 
 # Checklist
-    # Flip board
-    # In Check (into game loop)
-    # Checkmate / EndGame (into game loop)
+    # New Game Button
+    # Play game, escape, click space again, its black turn but goes to red. 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 
@@ -116,8 +115,6 @@ class King(Piece):
             ((board.pieces[row+drow][col+dcol] == None) or 
              (board.pieces[row+drow][col+dcol].color != self.color))):        
                 legalMoves.append((row + drow, col + dcol))
-                row += drow
-                col += dcol
         return legalMoves
 
 #Guard Class
@@ -458,7 +455,7 @@ def runGame():
                         moveDummyPos.start()
                         Model.slideIndex -= 1
                 elif(key == 'arrow_right'):
-                    if(Model.slideIndex != 3): 
+                    if(Model.slideIndex != 4): 
                         (x,y,z) = self.dummy.getPos()
                         moveDummyPos = LerpPosInterval(self.dummy, 1.0, LPoint3(x, y-360, z), blendType = 'easeInOut')
                         moveDummyPos.start()
@@ -479,19 +476,48 @@ def runGame():
         instructions = []
         slideIndex = 0
         width, height = 500, 600
-        kingInCheck, selectedPiece, selectedModel = None, None, None
+        selectedPiece, selectedModel = None, None
+        kingCheckmated, kingInCheck = None, None
+        rCheckmate, bCheckmate = None, None
+        rPawnSel, bPawnSel, knightSel, rookSel, = None, None, None, None
+        rCannonSel, bCannonSel, rMinisterSel, bMinisterSel = None, None, None, None
+        rGuardSel, bGuardSel, rKingSel, bKingSel = None, None, None, None
         selectedPosition = (-1,-1)
         currentPlayer = 'Red'
+        redKingCheckModel, blackKingCheckModel = None, None
         boardLines, boardBody, boardBase, river = None, None, None, None
         showBase, menum, palaceRed, palaceBlack = None, None, None, None
         playingGame, inInstructions = False, False
 
     #Methods for game and 3D manipulation and logic
     class Controller(object):
+        
+        @staticmethod
+        def initUnusedModels(showBase):
+            Model.rCheckmate = showBase.loader.loadModel('models/redkingcheckmated')
+            Model.bCheckmate = showBase.loader.loadModel('models/blackkingcheckmated')
+            Model.redKingCheckModel = showBase.loader.loadModel('models/redkingincheck')
+            Model.blackKingCheckModel = showBase.loader.loadModel('models/blackkingincheck')
+            Model.rPawnSel = showBase.loader.loadModel('models/redpawnselect')
+            Model.bPawnSel = showBase.loader.loadModel('models/blackpawnselect')
+            Model.knightSel = showBase.loader.loadModel('models/knightselect')
+            Model.rookSel = showBase.loader.loadModel('models/rookselect')
+            Model.rCannonSel = showBase.loader.loadModel('models/redcannonselect')
+            Model.bCannonSel = showBase.loader.loadModel('models/blackcannonselect')
+            Model.rMinisterSel = showBase.loader.loadModel('models/redministerselect')
+            Model.bMinisterSel = showBase.loader.loadModel('models/blackministerselect')
+            Model.rGuardSel = showBase.loader.loadModel('models/redguardselect')
+            Model.bGuardSel = showBase.loader.loadModel('models/blackguardselect')
+            Model.rKingSel = showBase.loader.loadModel('models/redkingselect')
+            Model.bKingSel = showBase.loader.loadModel('models/blackkingselect')
+
+
+
 
         @staticmethod
         def initGame(showBase):
             showBase.disableMouse()
+            Controller.initUnusedModels(showBase)
             Controller.createMenu(showBase)
             Controller.createInstructions(showBase)
             Controller.createPieces(showBase)
@@ -500,6 +526,7 @@ def runGame():
             Controller.createBoard(showBase)
             Controller.updatePieces(showBase)
             Controller.setModelShowBase(showBase)
+            
     
         #Lighting for scene
         @staticmethod
@@ -590,7 +617,8 @@ def runGame():
             instruct2 = showBase.loader.loadModel("models/instruct2")
             instruct3 = showBase.loader.loadModel("models/instruct3")
             instruct4 = showBase.loader.loadModel("models/instruct4")
-            Model.instructions.extend([instruct1, instruct2, instruct3, instruct4])
+            instruct5 = showBase.loader.loadModel("models/instruct5")
+            Model.instructions.extend([instruct1, instruct2, instruct3, instruct4, instruct5])
             for slide in Model.instructions:
                 slide.reparentTo(showBase.render)
                 slide.setScale(100, 100, 100)
@@ -859,7 +887,7 @@ def runGame():
                 # Game Over state
         
         @staticmethod
-        def checkGameOver(board):
+        def checkGameOver(board, showBase):
             final = []
             color = 'Red' if(Model.currentPlayer == 'Red') else 'Black'
             for piece in Model.pieces[color]:
@@ -869,6 +897,24 @@ def runGame():
                 final.extend(refinedMoves)
                 
             if(len(final) == 0):
+                (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
+                if(Model.currentPlayer == 'Red'):
+                    kingPiece = board.pieces[rkRow][rkCol]
+                    Model.kingCheckmated = Model.rCheckmate
+                    Model.kingCheckmated.reparentTo(showBase.render)
+                    Model.kingCheckmated.setScale(9, -9, 9)
+                    (x,y) = (kingPiece.x, kingPiece.y)
+                    Model.kingCheckmated.setPos(x, y, 7)
+                else:
+                    kingPiece = board.pieces[bkRow][bkCol]
+                    Model.kingCheckmated = Model.bCheckmate
+                    Model.kingCheckmated.reparentTo(showBase.render)
+                    Model.kingCheckmated.setScale(9, -9, 9)
+                    (x,y) = (kingPiece.x, kingPiece.y)
+                    Model.kingCheckmated.setPos(x, y, 7)
+                    Model.kingCheckmated.setHpr(180, 0, 0)
+
+
                 print('GameOver CHECKMATE!')
                 pass
                     
@@ -876,10 +922,6 @@ def runGame():
         @staticmethod
         def refineLegalMoves(board, row, col, piece, moves):
             changedMoves = copy.deepcopy(moves)
-            if(piece.color == 'Red'):
-                (kingRow, kingCol, notNeeded1, notNeeded2) = Controller.findKings(board)
-            else:
-                (notNeeded1, notNeeded2, kingRow, kingCol) = Controller.findKings(board)
             for (newRow, newCol) in moves:
                 #Temp changes
                 removedPiece = None
@@ -887,7 +929,12 @@ def runGame():
                 if(board.pieces[newRow][newCol] != None):
                     removedPiece = board.pieces[newRow][newCol]
                 board.pieces[newRow][newCol] = piece
-
+                              
+                if(piece.color == 'Red'):
+                    (kingRow, kingCol, notNeeded1, notNeeded2) = Controller.findKings(board)
+                else:
+                    (notNeeded1, notNeeded2, kingRow, kingCol) = Controller.findKings(board)
+ 
                 # Check if valid
                 if(Controller.kingsFacing(Model.gameBoard)):
                     changedMoves.remove((newRow, newCol))
@@ -942,14 +989,16 @@ def runGame():
             (rkRow, rkCol, bkRow, bkCol) = Controller.findKings(board)
             if(Controller.isInCheck(board, rkRow, rkCol, 'Red')):
                 kingPiece = board.pieces[rkRow][rkCol]
-                Model.kingInCheck = showBase.loader.loadModel('models/redkingincheck')
+                Model.redKingCheckModel = showBase.loader.loadModel('models/redkingincheck')
+                Model.kingInCheck = Model.redKingCheckModel
                 Model.kingInCheck.reparentTo(showBase.render)
                 Model.kingInCheck.setScale(9, -9, 9)
                 (x,y) = (kingPiece.x, kingPiece.y)
                 Model.kingInCheck.setPos(x, y, 6)
             elif(Controller.isInCheck(board, bkRow, bkCol, 'Black')):
                 kingPiece = board.pieces[bkRow][bkCol]
-                Model.kingInCheck = showBase.loader.loadModel('models/blackkingincheck')
+                Model.blackKingCheckModel = showBase.loader.loadModel('models/blackkingincheck')
+                Model.kingInCheck = Model.blackKingCheckModel
                 Model.kingInCheck.reparentTo(showBase.render)
                 Model.kingInCheck.setScale(9, -9, 9)
                 (x,y) = (kingPiece.x, kingPiece.y)
@@ -959,30 +1008,47 @@ def runGame():
 
         @staticmethod
         def selectPieceModel(showBase):
-            if(isinstance(Model.selectedPiece, Pawn)):
+            if(isinstance(Model.selectedPiece, Pawn)):    
                 if(Model.selectedPiece.color == 'Red'):
-                    Model.selectedModel = showBase.loader.loadModel('models/redpawnselect')
-                else: Model.selectedModel = showBase.loader.loadModel('models/blackpawnselect')
+                    Model.rPawnSel = showBase.loader.loadModel('models/redpawnselect')
+                    Model.selectedModel = Model.rPawnSel
+                else:
+                    Model.bPawnSel = showBase.loader.loadModel('models/blackpawnselect') 
+                    Model.selectedModel = Model.bPawnSel
             elif(isinstance(Model.selectedPiece, Rook)):
-                Model.selectedModel = showBase.loader.loadModel('models/rookselect')
+                Model.rookSel = showBase.loader.loadModel('models/rookselect')
+                Model.selectedModel = Model.rookSel
             elif(isinstance(Model.selectedPiece, Knight)):
-                Model.selectedModel = showBase.loader.loadModel('models/knightselect')
+                Model.knightSel = showBase.loader.loadModel('models/knightselect')
+                Model.selectedModel = Model.knightSel
             elif(isinstance(Model.selectedPiece, Minister)):
                 if(Model.selectedPiece.color == 'Red'):
-                    Model.selectedModel = showBase.loader.loadModel('models/redministerselect')
-                else: Model.selectedModel = showBase.loader.loadModel('models/blackministerselect')
+                    Model.rMinisterSel = showBase.loader.loadModel('models/redministerselect')
+                    Model.selectedModel = Model.rMinisterSel
+                else:
+                    Model.bMinisterSel = showBase.loader.loadModel('models/blackministerselect') 
+                    Model.selectedModel = Model.bMinisterSel
             elif(isinstance(Model.selectedPiece, Guard)):
                 if(Model.selectedPiece.color == 'Red'):
-                    Model.selectedModel = showBase.loader.loadModel('models/redguardselect')
-                else: Model.selectedModel = showBase.loader.loadModel('models/blackguardselect')
+                    Model.rGuardSel = showBase.loader.loadModel('models/redguardselect')
+                    Model.selectedModel = Model.rGuardSel
+                else: 
+                    Model.bGuardSel = showBase.loader.loadModel('models/blackguardselect')
+                    Model.selectedModel = Model.bGuardSel
             elif(isinstance(Model.selectedPiece, Cannon)):
                 if(Model.selectedPiece.color == 'Red'):
-                    Model.selectedModel = showBase.loader.loadModel('models/redcannonselect')
-                else: Model.selectedModel = showBase.loader.loadModel('models/blackcannonselect')
+                    Model.rCannonSel = showBase.loader.loadModel('models/redcannonselect')
+                    Model.selectedModel = Model.rCannonSel
+                else: 
+                    Model.bCannonSel = showBase.loader.loadModel('models/blackcannonselect')
+                    Model.selectedModel = Model.bCannonSel
             elif(isinstance(Model.selectedPiece, King)): 
-                if(Model.selectedPiece.color == 'Red'): 
-                    Model.selectedModel = showBase.loader.loadModel('models/redkingselect')
-                else: Model.selectedModel = showBase.loader.loadModel('models/blackkingselect')
+                if(Model.selectedPiece.color == 'Red'):
+                    Model.rKingSel = showBase.loader.loadModel('models/redkingselect')
+                    Model.selectedModel = Model.rKingSel
+                else: 
+                    Model.bKingSel = showBase.loader.loadModel('models/blackkingselect') 
+                    Model.selectedModel = Model.bKingSel
             
             Model.selectedModel.reparentTo(showBase.render)
             Model.selectedModel.setScale(9, -9, 9)
@@ -1038,7 +1104,7 @@ def runGame():
             # Check if GameOver (checkmate)
             Controller.removeInCheckModels()
             Controller.updateInCheckModels(Model.gameBoard, showBase)
-            Controller.checkGameOver(Model.gameBoard)
+            Controller.checkGameOver(Model.gameBoard, showBase)
 
     app = MyApp()
     app.run()

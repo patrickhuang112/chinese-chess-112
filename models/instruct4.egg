@@ -16,7 +16,7 @@
 }
 
 <Texture> Texture {
-  "./tex/instruct4_00000.png"
+  "./tex/instruct3_00000.png"
   <Scalar> envtype { MODULATE }
   <Scalar> minfilter { LINEAR_MIPMAP_LINEAR }
   <Scalar> magfilter { LINEAR_MIPMAP_LINEAR }
