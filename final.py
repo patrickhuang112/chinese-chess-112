@@ -19,8 +19,7 @@ from direct.interval.IntervalGlobal import *
 # Thanks to:
     # Professor Kosbie for suggesting 3D Chinese Chess for my TP idea
     # Elan for suggesting the idea of moving the camera after each move
-    # Michelle for undying support <3
-
+    # Michelle for support 
 
 # From https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 def roundHalfUp(d):
@@ -366,11 +365,22 @@ def runGame():
             a = KeyboardButton.ascii_key('a')
             s = KeyboardButton.ascii_key('s')
             d = KeyboardButton.ascii_key('d')
+            n = KeyboardButton.ascii_key('n')
 
             isDown = base.mouseWatcherNode.is_button_down
 
+            # n: New Game button while playing game
+            if((isDown(n)) and (Model.playingGame)):
+                Model.gameOver = False
+                if(Model.kingInCheck != None):
+                    Model.kingInCheck.removeNode()
+                if(Model.kingCheckmated != None):
+                    Model.kingCheckmated.removeNode()
+                Controller.initGame(self)
+                Controller.toDefaultRed(self)
+
             # Space: Go to game (based on current player)
-            if(isDown(space)): 
+            elif(isDown(space)): 
                 # Resets game if checkmate
                 if(Model.gameOver):
                     Model.gameOver = False
@@ -381,6 +391,7 @@ def runGame():
                 # From main menu or instructions
                 elif((not Model.playingGame) or (Model.inInstructions)):
                     Model.playingGame = True
+                    Model.inInstructions = False
                     if(Model.currentPlayer == 'Red'):
                         Controller.toDefaultRed(self)   
                     else:

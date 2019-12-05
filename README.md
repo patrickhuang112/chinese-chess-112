@@ -8,7 +8,7 @@ Fall-2019
 
 Final Term Project for: https://www.cs.cmu.edu/~112/
 
-External Modules used: Panda3D: https://www.panda3d.org/
+External Modules used/needed: Panda3D: https://www.panda3d.org/
 
 External Software used: Adobe After Effects, Blender 2.70, Blender YABEE Exporter
 
@@ -19,6 +19,8 @@ External Code used:
 	-Used code from 112 course (roundHalfUp)
 		-https://www.cs.cmu.edu/~112/notes/notes-variables-and-functions.html
 
+Run the project by opening "final.py" in a code editor and running it.
+
 Notes:
 
 	-When first playing the game, it will take a second or so after clicking/selecting a piece for the color to change. This is because the model needs to be loaded for the first time into the game.
@@ -26,8 +28,11 @@ Notes:
 	-Use the arrow keys (left, right) to rotate the board horizontally and (up, down) to rotate the board vertically
 	-Used WASD keys to move the position of the camera (the movement will always be relative to how much you have rotated the board)
 	-Use "j" to zoom in closer to the board and use "k" to zoom out from the board
+	-When checkmated, click "n", "space", or "esc" to start a new game
+	-Click "n" anytime in game to start a new game.
 
 	-When in the instructions screen, click left and right arrow to switch between slides. 
+		-Do not spam click the keys, wait for the animation to finish, otherwise it will not properly transition
 	-Click "esc" anytime to go back to the main menu (whether in instructions or in game)
 
 	-Lime Green indicates what piece is currently selected
